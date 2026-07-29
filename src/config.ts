@@ -63,3 +63,45 @@ export function resolvePurpose(name: string, entry: ServerConfig): string {
   }
   return name;
 }
+
+/**
+ * Persist mcpServers to Config. Creates the parent directory when missing.
+ */
+export function saveServers(
+  servers: Record<string, ServerConfig>,
+  configPath: string = resolveConfigPath(),
+): void {
+  const dir = path.dirname(configPath);
+  fs.mkdirSync(dir, { recursive: true });
+  const payload = `${JSON.stringify({ mcpServers: servers }, null, 2)}\n`;
+  fs.writeFileSync(configPath, payload, "utf8");
+}
+
+/** True when the entry has a usable stdio `command`. */
+export function hasCommand(entry: ServerConfig): boolean {
+  return typeof entry.command === "string" && entry.command.length > 0;
+}
+
+/** True when the entry has a usable HTTP `url`. */
+export function hasUrl(entry: ServerConfig): boolean {
+  return typeof entry.url === "string" && entry.url.length > 0;
+}
+
+/**
+ * Transport rule: exactly one of stdio (`command`) or HTTP (`url`).
+ * Rejects neither and rejects both.
+ */
+export function assertValidTransport(entry: ServerConfig): void {
+  const stdio = hasCommand(entry);
+  const http = hasUrl(entry);
+  if (!stdio && !http) {
+    throw new Error(
+      "Server must have either --command (stdio) or --url (HTTP), not neither",
+    );
+  }
+  if (stdio && http) {
+    throw new Error(
+      "Server must not have both --command and --url; choose one transport",
+    );
+  }
+}
