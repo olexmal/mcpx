@@ -4,10 +4,10 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] `mcpx` can be invoked as a CLI for development (on `PATH` or documented equivalent)
-- [ ] Tests can point Config at a temp location (home or path override) without touching the real `~/.mcpx/mcp.json`
-- [ ] Output conventions are implemented: JSON default, pretty via `--pretty` and/or TTY, failures → stderr + non-zero exit
-- [ ] `--help` (or equivalent) documents the intended command surface
-- [ ] Runtime and MCP SDK choice is recorded (e.g. brief note in README or package metadata)
+- [x] `mcpx` can be invoked as a CLI for development (on `PATH` or documented equivalent)
+- [x] Tests can point Config at a temp location (home or path override) without touching the real `~/.mcpx/mcp.json`
+- [x] Output conventions are implemented: JSON default, pretty via `--pretty` and/or TTY, failures → stderr + non-zero exit
+- [x] `--help` (or equivalent) documents the intended command surface
+- [x] Runtime and MCP SDK choice is recorded (e.g. brief note in README or package metadata)
