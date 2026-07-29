@@ -1,9 +1,11 @@
 /**
  * Short-lived MCP client: connect → one operation → disconnect.
- * v1: stdio fully implemented; Streamable HTTP deferred (ticket 06).
+ * Transports: stdio (`command`) and Streamable HTTP (`url`, optional `headers`).
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
   hasCommand,
   hasUrl,
@@ -67,15 +69,36 @@ function stdioEnv(entry: ServerConfig): Record<string, string> {
   return { ...processEnvStrings(), ...extra };
 }
 
-/**
- * Run one MCP operation against a Config Server, always disconnecting.
- */
-export async function withServerClient<T>(
-  entry: ServerConfig,
-  fn: (client: Client) => Promise<T>,
-): Promise<T> {
+function httpHeaders(entry: ServerConfig): Record<string, string> {
+  if (entry.headers === undefined || entry.headers === null) {
+    return {};
+  }
+  if (typeof entry.headers !== "object" || Array.isArray(entry.headers)) {
+    throw new Error("Server config headers must be an object of string values");
+  }
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(
+    entry.headers as Record<string, unknown>,
+  )) {
+    if (typeof value !== "string") {
+      throw new Error("Server config headers must be an object of string values");
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
+function createTransport(entry: ServerConfig): Transport {
   if (hasUrl(entry) && !hasCommand(entry)) {
-    throw new Error("HTTP not implemented yet");
+    const headers = httpHeaders(entry);
+    const opts =
+      Object.keys(headers).length > 0
+        ? { requestInit: { headers } }
+        : undefined;
+    return new StreamableHTTPClientTransport(
+      new URL(entry.url as string),
+      opts,
+    );
   }
   if (!hasCommand(entry)) {
     throw new Error(
@@ -83,13 +106,22 @@ export async function withServerClient<T>(
     );
   }
 
-  const transport = new StdioClientTransport({
+  return new StdioClientTransport({
     command: entry.command as string,
     args: stdioArgs(entry),
     env: stdioEnv(entry),
     stderr: "pipe",
   });
+}
 
+/**
+ * Run one MCP operation against a Config Server, always disconnecting.
+ */
+export async function withServerClient<T>(
+  entry: ServerConfig,
+  fn: (client: Client) => Promise<T>,
+): Promise<T> {
+  const transport = createTransport(entry);
   const client = new Client({ name: "mcpx", version: "0.1.0" });
   try {
     await client.connect(transport);

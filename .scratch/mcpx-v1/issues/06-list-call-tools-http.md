@@ -4,11 +4,11 @@
 
 **Blocked by:** 05 — List and call Tools over stdio
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] `list-tools --server <name>` works for an HTTP Server in Config
-- [ ] `call-tool --server <name> …` works for an HTTP Server in Config
-- [ ] Optional `headers` from Config are sent on the HTTP transport
-- [ ] Connect/Tool failures surface as non-zero exit with clear errors
-- [ ] Legacy SSE is not implemented or required
-- [ ] CLI acceptance tests use a stub Streamable HTTP MCP Server
+- [x] `list-tools --server <name>` works for an HTTP Server in Config
+- [x] `call-tool --server <name> …` works for an HTTP Server in Config
+- [x] Optional `headers` from Config are sent on the HTTP transport
+- [x] Connect/Tool failures surface as non-zero exit with clear errors
+- [x] Legacy SSE is not implemented or required
+- [x] CLI acceptance tests use a stub Streamable HTTP MCP Server

@@ -42,6 +42,51 @@ path of an `mcp.json` file. When set, `mcpx` reads that file instead of
 MCPX_CONFIG=/tmp/demo-mcp.json mcpx server list
 ```
 
+Top-level shape is a familiar `mcpServers` map. The map key is the Server name.
+Optional `description` is the Server’s **Purpose** (shown by `server list`). If
+`description` is omitted, Purpose falls back to identifiable details
+(`name` + `command` or `url`). Exactly one transport per Server: stdio
+(`command`, optional `args` / `env`) **or** Streamable HTTP (`url`, optional
+`headers`) — not both, not neither.
+
+```json
+{
+  "mcpServers": {
+    "db": {
+      "description": "Local database MCP",
+      "command": "npx",
+      "args": ["-y", "@example/db-mcp"],
+      "env": { "DB_URL": "postgres://localhost/app" }
+    },
+    "intellij": {
+      "description": "IntelliJ IDEA MCP",
+      "url": "http://127.0.0.1:64342/mcp",
+      "headers": { "Authorization": "Bearer …" }
+    }
+  }
+}
+```
+
+Hand-editing `~/.mcpx/mcp.json` is valid. `mcpx` never edits Cursor/IDE
+`mcp.json`.
+
+## Agent loop
+
+Agents and humans share the same three-step workflow. Always pick a Server by
+name — there is no default.
+
+1. **List Servers** (and Purpose) — choose which Server to use
+2. **List Tools** on that Server — learn names, descriptions, and input schemas
+3. **Call a Tool** on that Server — pass JSON args
+
+```bash
+mcpx server list
+mcpx list-tools -s db
+mcpx call-tool -s db --tool query --args '{"sql":"select 1"}'
+```
+
+Equivalent long form: `--server` instead of `-s`.
+
 ## Adding Servers from JSON / clipboard
 
 ```bash
@@ -62,6 +107,15 @@ exactly one of `command` or `url`.
 `xclip` / `xsel`, or `powershell.exe Get-Clipboard` on WSL). For tests, set
 `MCPX_CLIPBOARD` to the snippet text instead of touching the real clipboard.
 
+Flag-based add (stdio or HTTP):
+
+```bash
+mcpx server add --name db --description "Local database MCP" \
+  --command npx --args '["-y","@example/db-mcp"]'
+mcpx server add --name intellij --description "IntelliJ IDEA MCP" \
+  --url http://127.0.0.1:64342/mcp
+```
+
 ## Output
 
 - **Default:** compact JSON on stdout (agent-first)
@@ -80,6 +134,14 @@ mcpx server remove <name>
 mcpx list-tools --server <name>
 mcpx call-tool --server <name> --tool <tool> --args '<json>'
 ```
+
+## v1 limits
+
+- **No default Server** — `list-tools` and `call-tool` always require `-s` / `--server`
+- **Tools only** — no MCP resources or prompts
+- **No IDE mcp.json edits** — Config is only `~/.mcpx/mcp.json` (or `MCPX_CONFIG`)
+- **No one-off transport** — no `--command` / `--url` on `list-tools` / `call-tool`; register the Server in Config first
+- **Transports:** stdio and Streamable HTTP only (legacy SSE out of scope)
 
 ## Development
 

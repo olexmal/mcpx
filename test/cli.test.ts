@@ -2,8 +2,12 @@ import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { runMcpx } from "./helpers/run-mcpx.js";
+import {
+  startStubHttpMcp,
+  type StubHttpMcpHandle,
+} from "./helpers/start-stub-http-mcp.js";
 
 describe("mcpx CLI harness", () => {
   it("prints help and exits 0 for --help", async () => {
@@ -790,5 +794,147 @@ describe("mcpx list-tools / call-tool (stdio)", () => {
     expect(callHelp.exitCode).toBe(0);
     expect(callHelp.stdout).not.toMatch(/--command/);
     expect(callHelp.stdout).not.toMatch(/--url/);
+  });
+});
+
+describe("mcpx list-tools / call-tool (Streamable HTTP)", () => {
+  let stub: StubHttpMcpHandle | undefined;
+
+  afterEach(async () => {
+    if (stub !== undefined) {
+      await stub.close();
+      stub = undefined;
+    }
+  });
+
+  async function configWithHttp(
+    entry: Record<string, unknown>,
+  ): Promise<string> {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          httpstub: {
+            description: "Stub HTTP MCP",
+            ...entry,
+          },
+        },
+      }),
+    );
+    return configPath;
+  }
+
+  it("list-tools returns tool names, descriptions, and inputSchemas as JSON", async () => {
+    stub = await startStubHttpMcp();
+    const configPath = await configWithHttp({ url: stub.url });
+
+    const result = await runMcpx(["list-tools", "-s", "httpstub"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+
+    const tools = JSON.parse(result.stdout) as Array<{
+      name: string;
+      description?: string;
+      inputSchema: unknown;
+    }>;
+    expect(Array.isArray(tools)).toBe(true);
+    const echo = tools.find((t) => t.name === "echo");
+    expect(echo).toBeDefined();
+    expect(echo!.description).toMatch(/echo/i);
+    expect(echo!.inputSchema).toEqual(
+      expect.objectContaining({
+        type: "object",
+        properties: expect.objectContaining({
+          message: expect.objectContaining({ type: "string" }),
+        }),
+      }),
+    );
+  });
+
+  it("call-tool returns Tool result as JSON", async () => {
+    stub = await startStubHttpMcp();
+    const configPath = await configWithHttp({ url: stub.url });
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "httpstub",
+        "--tool",
+        "echo",
+        "--args",
+        '{"message":"hello-http"}',
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    const payload = JSON.parse(result.stdout) as {
+      content: Array<{ type: string; text: string }>;
+    };
+    expect(payload.content).toEqual([{ type: "text", text: "hello-http" }]);
+  });
+
+  it("sends optional headers from Config on the HTTP transport", async () => {
+    stub = await startStubHttpMcp({
+      requiredHeader: { name: "x-test-auth", value: "secret-token" },
+    });
+    const configPath = await configWithHttp({
+      url: stub.url,
+      headers: { "x-test-auth": "secret-token" },
+    });
+
+    const result = await runMcpx(["list-tools", "--server", "httpstub"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    const tools = JSON.parse(result.stdout) as Array<{ name: string }>;
+    expect(tools.some((t) => t.name === "echo")).toBe(true);
+  });
+
+  it("fails clearly when required headers are missing", async () => {
+    stub = await startStubHttpMcp({
+      requiredHeader: { name: "x-test-auth", value: "secret-token" },
+    });
+    const configPath = await configWithHttp({ url: stub.url });
+
+    const result = await runMcpx(["list-tools", "--server", "httpstub"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr.length).toBeGreaterThan(0);
+  });
+
+  it("list-tools fails on connect failure (unreachable URL)", async () => {
+    const configPath = await configWithHttp({
+      url: "http://127.0.0.1:1/mcp",
+    });
+
+    const result = await runMcpx(["list-tools", "--server", "httpstub"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr.length).toBeGreaterThan(0);
+  });
+
+  it("call-tool fails clearly when Tool returns isError", async () => {
+    stub = await startStubHttpMcp();
+    const configPath = await configWithHttp({ url: stub.url });
+
+    const result = await runMcpx(
+      ["call-tool", "--server", "httpstub", "--tool", "fail", "--args", "{}"],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr.length).toBeGreaterThan(0);
+    expect(result.stderr).toMatch(/fail|error|intentional/i);
   });
 });
