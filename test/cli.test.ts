@@ -1,6 +1,7 @@
 import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runMcpx } from "./helpers/run-mcpx.js";
 
@@ -600,5 +601,194 @@ describe("mcpx CLI harness", () => {
     );
     expect(add.exitCode).not.toBe(0);
     expect(add.stderr.length).toBeGreaterThan(0);
+  });
+});
+
+describe("mcpx list-tools / call-tool (stdio)", () => {
+  const fixturePath = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "fixtures/stub-mcp-server.mjs",
+  );
+
+  async function configWithStub(
+    extra: Record<string, unknown> = {},
+  ): Promise<string> {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          stub: {
+            description: "Stub stdio MCP",
+            command: process.execPath,
+            args: [fixturePath],
+            ...extra,
+          },
+        },
+      }),
+    );
+    return configPath;
+  }
+
+  it("list-tools requires --server / -s", async () => {
+    const result = await runMcpx(["list-tools"]);
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr.length).toBeGreaterThan(0);
+    expect(result.stderr).toMatch(/server/i);
+  });
+
+  it("call-tool requires --server / -s", async () => {
+    const result = await runMcpx(["call-tool", "--tool", "echo"]);
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr.length).toBeGreaterThan(0);
+    expect(result.stderr).toMatch(/server/i);
+  });
+
+  it("list-tools fails clearly for unknown Server", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(configPath, JSON.stringify({ mcpServers: {} }));
+
+    const result = await runMcpx(["list-tools", "--server", "missing"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/not found|unknown/i);
+    expect(result.stderr).toMatch(/missing/);
+  });
+
+  it("list-tools returns tool names, descriptions, and inputSchemas as JSON", async () => {
+    const configPath = await configWithStub();
+
+    const result = await runMcpx(["list-tools", "-s", "stub"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+
+    const tools = JSON.parse(result.stdout) as Array<{
+      name: string;
+      description?: string;
+      inputSchema: unknown;
+    }>;
+    expect(Array.isArray(tools)).toBe(true);
+    const echo = tools.find((t) => t.name === "echo");
+    expect(echo).toBeDefined();
+    expect(echo!.description).toMatch(/echo/i);
+    expect(echo!.inputSchema).toEqual(
+      expect.objectContaining({
+        type: "object",
+        properties: expect.objectContaining({
+          message: expect.objectContaining({ type: "string" }),
+        }),
+      }),
+    );
+  });
+
+  it("call-tool returns Tool result as JSON", async () => {
+    const configPath = await configWithStub();
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "stub",
+        "--tool",
+        "echo",
+        "--args",
+        '{"message":"hello"}',
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    const payload = JSON.parse(result.stdout) as {
+      content: Array<{ type: string; text: string }>;
+    };
+    expect(payload.content).toEqual([{ type: "text", text: "hello" }]);
+  });
+
+  it("call-tool rejects invalid --args JSON before connecting", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    // command that would fail if we connected
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          broken: {
+            command: process.execPath,
+            args: ["-e", "process.exit(1)"],
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "broken",
+        "--tool",
+        "echo",
+        "--args",
+        "not-json",
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/args|json/i);
+    expect(result.stderr).not.toMatch(/connect|spawn|Connection closed/i);
+  });
+
+  it("list-tools fails on connect failure", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          dead: {
+            command: process.execPath,
+            args: ["-e", "process.exit(1)"],
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(["list-tools", "--server", "dead"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr.length).toBeGreaterThan(0);
+  });
+
+  it("call-tool fails clearly when Tool returns isError", async () => {
+    const configPath = await configWithStub();
+
+    const result = await runMcpx(
+      ["call-tool", "--server", "stub", "--tool", "fail", "--args", "{}"],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr.length).toBeGreaterThan(0);
+    expect(result.stderr).toMatch(/fail|error|intentional/i);
+  });
+
+  it("list-tools / call-tool have no --command or --url bypass", async () => {
+    const listHelp = await runMcpx(["list-tools", "--help"]);
+    expect(listHelp.exitCode).toBe(0);
+    expect(listHelp.stdout).not.toMatch(/--command/);
+    expect(listHelp.stdout).not.toMatch(/--url/);
+
+    const callHelp = await runMcpx(["call-tool", "--help"]);
+    expect(callHelp.exitCode).toBe(0);
+    expect(callHelp.stdout).not.toMatch(/--command/);
+    expect(callHelp.stdout).not.toMatch(/--url/);
   });
 });

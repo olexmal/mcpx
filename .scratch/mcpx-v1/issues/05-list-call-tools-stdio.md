@@ -4,11 +4,11 @@
 
 **Blocked by:** 02 — List configured Servers
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] `list-tools --server <name>` returns tool names, descriptions, and input schemas as JSON for a stdio Server
-- [ ] `call-tool --server <name> --tool <tool> --args '<json>'` returns the Tool result as JSON
-- [ ] Omitting `--server` / `-s` fails with non-zero exit (no default Server)
-- [ ] Unknown Server name, invalid `--args` JSON, connect failure, and Tool error each fail clearly
-- [ ] No one-off `--command` / `--url` bypass on these commands
-- [ ] CLI acceptance tests use a stub stdio MCP Server and a disposable Config
+- [x] `list-tools --server <name>` returns tool names, descriptions, and input schemas as JSON for a stdio Server
+- [x] `call-tool --server <name> --tool <tool> --args '<json>'` returns the Tool result as JSON
+- [x] Omitting `--server` / `-s` fails with non-zero exit (no default Server)
+- [x] Unknown Server name, invalid `--args` JSON, connect failure, and Tool error each fail clearly
+- [x] No one-off `--command` / `--url` bypass on these commands
+- [x] CLI acceptance tests use a stub stdio MCP Server and a disposable Config

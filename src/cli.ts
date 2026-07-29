@@ -8,6 +8,7 @@ import {
   saveServers,
   type ServerConfig,
 } from "./config.js";
+import { callToolOnServer, listToolsOnServer } from "./mcp-client.js";
 import { writeError, writeJson } from "./output.js";
 import {
   mergeServers,
@@ -207,12 +208,28 @@ server
     }
   });
 
+function resolveServer(name: string): ServerConfig {
+  const servers = loadServers(resolveConfigPath());
+  if (!Object.prototype.hasOwnProperty.call(servers, name)) {
+    throw new Error(`Server not found (unknown name): ${name}`);
+  }
+  return servers[name]!;
+}
+
 program
   .command("list-tools")
   .description("List Tools on a Server")
   .requiredOption("-s, --server <name>", "Server name")
-  .action(() => {
-    writeError("not implemented");
+  .action(async (opts: { server: string }) => {
+    try {
+      const pretty = program.opts<{ pretty?: boolean }>().pretty === true;
+      const entry = resolveServer(opts.server);
+      const tools = await listToolsOnServer(entry);
+      writeJson(tools, { pretty });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      writeError(message);
+    }
   });
 
 program
@@ -221,8 +238,35 @@ program
   .requiredOption("-s, --server <name>", "Server name")
   .requiredOption("-t, --tool <name>", "Tool name")
   .option("--args <json>", "Tool arguments as JSON", "{}")
-  .action(() => {
-    writeError("not implemented");
+  .action(async (opts: { server: string; tool: string; args: string }) => {
+    try {
+      // Validate --args before any connect attempt.
+      let parsedArgs: unknown;
+      try {
+        parsedArgs = JSON.parse(opts.args) as unknown;
+      } catch {
+        throw new Error(`Invalid JSON for --args: ${opts.args}`);
+      }
+      if (
+        parsedArgs === null ||
+        typeof parsedArgs !== "object" ||
+        Array.isArray(parsedArgs)
+      ) {
+        throw new Error("--args must be a JSON object");
+      }
+
+      const pretty = program.opts<{ pretty?: boolean }>().pretty === true;
+      const entry = resolveServer(opts.server);
+      const result = await callToolOnServer(
+        entry,
+        opts.tool,
+        parsedArgs as Record<string, unknown>,
+      );
+      writeJson(result, { pretty });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      writeError(message);
+    }
   });
 
 if (process.argv.slice(2).length === 0) {
