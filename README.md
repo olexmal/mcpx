@@ -42,6 +42,26 @@ path of an `mcp.json` file. When set, `mcpx` reads that file instead of
 MCPX_CONFIG=/tmp/demo-mcp.json mcpx server list
 ```
 
+## Adding Servers from JSON / clipboard
+
+```bash
+mcpx server add --from-file snippet.json
+mcpx server add --from-clipboard
+```
+
+Snippet shapes accepted:
+
+1. Full `{"mcpServers":{...}}` (JetBrains Copy HTTP Stream / Copy Stdio Config)
+2. Bare map of named Servers `{ "name": { "command"|"url": ... } }`
+3. Single Server body `{ "command"|"url": ... }` — requires `--name <name>`
+
+Duplicate names fail atomically (nothing written). Each new Server must have
+exactly one of `command` or `url`.
+
+**Clipboard:** `--from-clipboard` reads the system clipboard (`wl-paste` /
+`xclip` / `xsel`, or `powershell.exe Get-Clipboard` on WSL). For tests, set
+`MCPX_CLIPBOARD` to the snippet text instead of touching the real clipboard.
+
 ## Output
 
 - **Default:** compact JSON on stdout (agent-first)
@@ -53,14 +73,13 @@ MCPX_CONFIG=/tmp/demo-mcp.json mcpx server list
 
 ```bash
 mcpx server list
-mcpx server add …
+mcpx server add --name … --command … | --url …
+mcpx server add --from-file <path>
+mcpx server add --from-clipboard
 mcpx server remove <name>
 mcpx list-tools --server <name>
 mcpx call-tool --server <name> --tool <tool> --args '<json>'
 ```
-
-Ticket 01 scaffolds the harness; feature commands beyond a minimal
-`server list` (empty / name-only) arrive in later tickets.
 
 ## Development
 

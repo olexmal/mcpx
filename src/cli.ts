@@ -9,6 +9,12 @@ import {
   type ServerConfig,
 } from "./config.js";
 import { writeError, writeJson } from "./output.js";
+import {
+  mergeServers,
+  parseServerSnippet,
+  readClipboard,
+  readSnippetFile,
+} from "./snippet.js";
 
 const program = new Command();
 
@@ -68,59 +74,114 @@ function parseJsonFlag(
   return parsed;
 }
 
+type AddOpts = {
+  name?: string;
+  description?: string;
+  command?: string;
+  args?: string;
+  env?: string;
+  url?: string;
+  headers?: string;
+  fromFile?: string;
+  fromClipboard?: boolean;
+};
+
+function hasFlagTransport(opts: AddOpts): boolean {
+  return (
+    opts.description !== undefined ||
+    opts.command !== undefined ||
+    opts.args !== undefined ||
+    opts.env !== undefined ||
+    opts.url !== undefined ||
+    opts.headers !== undefined
+  );
+}
+
+function addFromSnippet(raw: string, name: string | undefined): void {
+  const configPath = resolveConfigPath();
+  const existing = loadServers(configPath);
+  const incoming = parseServerSnippet(raw, name);
+  const merged = mergeServers(existing, incoming);
+  saveServers(merged, configPath);
+}
+
+function addFromFlags(opts: AddOpts): void {
+  if (opts.name === undefined || opts.name.length === 0) {
+    throw new Error("Missing required option --name <name>");
+  }
+
+  const configPath = resolveConfigPath();
+  const servers = loadServers(configPath);
+  if (Object.prototype.hasOwnProperty.call(servers, opts.name)) {
+    throw new Error(`Server already exists (duplicate name): ${opts.name}`);
+  }
+
+  const entry: ServerConfig = {};
+  if (opts.description !== undefined) {
+    entry.description = opts.description;
+  }
+  if (opts.command !== undefined) {
+    entry.command = opts.command;
+  }
+  if (opts.url !== undefined) {
+    entry.url = opts.url;
+  }
+
+  const args = parseJsonFlag("args", opts.args, "array");
+  if (args !== undefined) {
+    entry.args = args;
+  }
+  const env = parseJsonFlag("env", opts.env, "object");
+  if (env !== undefined) {
+    entry.env = env;
+  }
+  const headers = parseJsonFlag("headers", opts.headers, "object");
+  if (headers !== undefined) {
+    entry.headers = headers;
+  }
+
+  assertValidTransport(entry);
+  servers[opts.name] = entry;
+  saveServers(servers, configPath);
+}
+
 server
   .command("add")
-  .description("Add a Server to Config")
-  .requiredOption("--name <name>", "Server name (Config map key)")
+  .description(
+    "Add a Server to Config (flags, --from-file, or --from-clipboard)",
+  )
+  .option("--name <name>", "Server name (Config map key; required for flag add and single-body snippets)")
   .option("--description <text>", "Purpose (optional)")
   .option("--command <cmd>", "Stdio command")
   .option("--args <json>", "Stdio args as a JSON array string")
   .option("--env <json>", "Stdio env as a JSON object string")
   .option("--url <url>", "Streamable HTTP URL")
   .option("--headers <json>", "HTTP headers as a JSON object string")
-  .action((opts: {
-    name: string;
-    description?: string;
-    command?: string;
-    args?: string;
-    env?: string;
-    url?: string;
-    headers?: string;
-  }) => {
+  .option("--from-file <path>", "Merge Servers from a JSON snippet file")
+  .option("--from-clipboard", "Merge Servers from the clipboard (or MCPX_CLIPBOARD)")
+  .action((opts: AddOpts) => {
     try {
-      const configPath = resolveConfigPath();
-      const servers = loadServers(configPath);
-      if (Object.prototype.hasOwnProperty.call(servers, opts.name)) {
-        throw new Error(`Server already exists (duplicate name): ${opts.name}`);
+      const fromFile = opts.fromFile !== undefined;
+      const fromClipboard = opts.fromClipboard === true;
+
+      if (fromFile && fromClipboard) {
+        throw new Error("Use only one of --from-file or --from-clipboard");
       }
 
-      const entry: ServerConfig = {};
-      if (opts.description !== undefined) {
-        entry.description = opts.description;
-      }
-      if (opts.command !== undefined) {
-        entry.command = opts.command;
-      }
-      if (opts.url !== undefined) {
-        entry.url = opts.url;
-      }
-
-      const args = parseJsonFlag("args", opts.args, "array");
-      if (args !== undefined) {
-        entry.args = args;
-      }
-      const env = parseJsonFlag("env", opts.env, "object");
-      if (env !== undefined) {
-        entry.env = env;
-      }
-      const headers = parseJsonFlag("headers", opts.headers, "object");
-      if (headers !== undefined) {
-        entry.headers = headers;
+      if (fromFile || fromClipboard) {
+        if (hasFlagTransport(opts)) {
+          throw new Error(
+            "Cannot combine --from-file/--from-clipboard with --command/--url/--args/--env/--headers/--description",
+          );
+        }
+        const raw = fromFile
+          ? readSnippetFile(opts.fromFile!)
+          : readClipboard();
+        addFromSnippet(raw, opts.name);
+        return;
       }
 
-      assertValidTransport(entry);
-      servers[opts.name] = entry;
-      saveServers(servers, configPath);
+      addFromFlags(opts);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       writeError(message);

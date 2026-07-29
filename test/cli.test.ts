@@ -348,4 +348,257 @@ describe("mcpx CLI harness", () => {
     expect(add.stdout).toBe("");
     expect(add.stderr).toMatch(/args/i);
   });
+
+  it("server add --from-file merges full mcpServers snippet", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: { keep: { command: "true" } },
+      }),
+    );
+    const snippetPath = path.join(dir, "snippet.json");
+    await writeFile(
+      snippetPath,
+      JSON.stringify({
+        mcpServers: {
+          intellij: {
+            description: "IntelliJ IDEA MCP",
+            url: "http://127.0.0.1:64342/mcp",
+          },
+          db: {
+            command: "npx",
+            args: ["-y", "@example/db-mcp"],
+          },
+        },
+      }),
+    );
+
+    const add = await runMcpx(
+      ["server", "add", "--from-file", snippetPath],
+      { mcpConfig: configPath },
+    );
+    expect(add.exitCode).toBe(0);
+    expect(add.stderr).toBe("");
+
+    const list = await runMcpx(["server", "list"], { mcpConfig: configPath });
+    expect(list.exitCode).toBe(0);
+    const names = (
+      JSON.parse(list.stdout) as Array<{ name: string }>
+    ).map((e) => e.name);
+    expect(names.sort()).toEqual(["db", "intellij", "keep"]);
+  });
+
+  it("server add --from-file merges bare map of Servers", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    const snippetPath = path.join(dir, "bare.json");
+    await writeFile(
+      snippetPath,
+      JSON.stringify({
+        stdio: { command: "npx", args: ["-y", "pkg"] },
+        http: { url: "http://127.0.0.1:9/mcp" },
+      }),
+    );
+
+    const add = await runMcpx(
+      ["server", "add", "--from-file", snippetPath],
+      { mcpConfig: configPath },
+    );
+    expect(add.exitCode).toBe(0);
+
+    const raw = JSON.parse(await readFile(configPath, "utf8")) as {
+      mcpServers: Record<string, unknown>;
+    };
+    expect(Object.keys(raw.mcpServers).sort()).toEqual(["http", "stdio"]);
+  });
+
+  it("server add --from-file merges JetBrains-style single Server under mcpServers", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    const snippetPath = path.join(dir, "jb.json");
+    await writeFile(
+      snippetPath,
+      JSON.stringify({
+        mcpServers: {
+          "intellij-http": {
+            url: "http://127.0.0.1:64342/mcp",
+            headers: { Authorization: "Bearer t" },
+          },
+        },
+      }),
+    );
+
+    const add = await runMcpx(
+      ["server", "add", "--from-file", snippetPath],
+      { mcpConfig: configPath },
+    );
+    expect(add.exitCode).toBe(0);
+
+    const list = await runMcpx(["server", "list"], { mcpConfig: configPath });
+    expect(list.stdout.trim()).toBe(
+      '[{"name":"intellij-http","purpose":"intellij-http (url: http://127.0.0.1:64342/mcp)"}]',
+    );
+  });
+
+  it("server add --from-file accepts single Server body with --name", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    const snippetPath = path.join(dir, "body.json");
+    await writeFile(
+      snippetPath,
+      JSON.stringify({
+        command: "npx",
+        args: ["-y", "pkg"],
+        description: "from body",
+      }),
+    );
+
+    const add = await runMcpx(
+      ["server", "add", "--from-file", snippetPath, "--name", "named"],
+      { mcpConfig: configPath },
+    );
+    expect(add.exitCode).toBe(0);
+
+    const raw = JSON.parse(await readFile(configPath, "utf8")) as {
+      mcpServers: Record<string, unknown>;
+    };
+    expect(raw.mcpServers.named).toEqual({
+      command: "npx",
+      args: ["-y", "pkg"],
+      description: "from body",
+    });
+  });
+
+  it("server add --from-file rejects single Server body without --name", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    const snippetPath = path.join(dir, "body.json");
+    await writeFile(
+      snippetPath,
+      JSON.stringify({ command: "npx" }),
+    );
+
+    const add = await runMcpx(
+      ["server", "add", "--from-file", snippetPath],
+      { mcpConfig: configPath },
+    );
+    expect(add.exitCode).not.toBe(0);
+    expect(add.stdout).toBe("");
+    expect(add.stderr).toMatch(/--name/i);
+  });
+
+  it("server add --from-file rejects duplicate names atomically", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          demo: { command: "true", description: "original" },
+        },
+      }),
+    );
+    const snippetPath = path.join(dir, "conflict.json");
+    await writeFile(
+      snippetPath,
+      JSON.stringify({
+        mcpServers: {
+          demo: { command: "false" },
+          other: { url: "http://127.0.0.1:9/mcp" },
+        },
+      }),
+    );
+
+    const add = await runMcpx(
+      ["server", "add", "--from-file", snippetPath],
+      { mcpConfig: configPath },
+    );
+    expect(add.exitCode).not.toBe(0);
+    expect(add.stdout).toBe("");
+    expect(add.stderr).toMatch(/already exists|duplicate/i);
+    expect(add.stderr).toMatch(/demo/);
+
+    const raw = JSON.parse(await readFile(configPath, "utf8")) as {
+      mcpServers: Record<string, unknown>;
+    };
+    expect(raw.mcpServers).toEqual({
+      demo: { command: "true", description: "original" },
+    });
+  });
+
+  it("server add --from-file rejects invalid transport without writing", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(configPath, JSON.stringify({ mcpServers: {} }));
+    const snippetPath = path.join(dir, "bad.json");
+    await writeFile(
+      snippetPath,
+      JSON.stringify({
+        mcpServers: {
+          ok: { command: "true" },
+          bad: { description: "neither" },
+        },
+      }),
+    );
+
+    const add = await runMcpx(
+      ["server", "add", "--from-file", snippetPath],
+      { mcpConfig: configPath },
+    );
+    expect(add.exitCode).not.toBe(0);
+    expect(add.stderr).toMatch(/command|url/i);
+
+    const raw = JSON.parse(await readFile(configPath, "utf8")) as {
+      mcpServers: Record<string, unknown>;
+    };
+    expect(raw.mcpServers).toEqual({});
+  });
+
+  it("server add --from-clipboard merges via MCPX_CLIPBOARD env", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    const snippet = JSON.stringify({
+      mcpServers: {
+        clipped: { url: "http://127.0.0.1:9/mcp", description: "from clip" },
+      },
+    });
+
+    const add = await runMcpx(["server", "add", "--from-clipboard"], {
+      mcpConfig: configPath,
+      env: { MCPX_CLIPBOARD: snippet },
+    });
+    expect(add.exitCode).toBe(0);
+    expect(add.stderr).toBe("");
+
+    const list = await runMcpx(["server", "list"], { mcpConfig: configPath });
+    expect(list.stdout.trim()).toBe(
+      '[{"name":"clipped","purpose":"from clip"}]',
+    );
+  });
+
+  it("server add rejects mixing --from-file with transport flags", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    const snippetPath = path.join(dir, "snippet.json");
+    await writeFile(
+      snippetPath,
+      JSON.stringify({ mcpServers: { a: { command: "true" } } }),
+    );
+
+    const add = await runMcpx(
+      [
+        "server",
+        "add",
+        "--from-file",
+        snippetPath,
+        "--command",
+        "npx",
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(add.exitCode).not.toBe(0);
+    expect(add.stderr.length).toBeGreaterThan(0);
+  });
 });
