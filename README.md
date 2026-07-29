@@ -123,6 +123,14 @@ mcpx server add --name intellij --description "IntelliJ IDEA MCP" \
 - **TTY:** when stdout is a terminal, prefer pretty JSON even without `--pretty`
 - **Errors:** message on stderr, non-zero exit code
 
+### Success JSON shapes
+
+**`server list`** — array of `{ "name", "purpose" }` (`purpose` from `description` or fallback).
+
+**`list-tools`** — array of `{ "name", "description?", "inputSchema" }`.
+
+**`call-tool`** — MCP tool result object (typically `{ "content": [ … ] }`). Tool-level errors → non-zero exit and stderr, empty stdout.
+
 ## Commands (v1 surface)
 
 ```bash

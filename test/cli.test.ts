@@ -771,6 +771,29 @@ describe("mcpx list-tools / call-tool (stdio)", () => {
     expect(result.stderr.length).toBeGreaterThan(0);
   });
 
+  it("list-tools rejects hand-edited Config with both command and url", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          both: {
+            command: process.execPath,
+            url: "http://127.0.0.1:9/mcp",
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(["list-tools", "--server", "both"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/both command.*url|must not have both/i);
+  });
+
   it("call-tool fails clearly when Tool returns isError", async () => {
     const configPath = await configWithStub();
 

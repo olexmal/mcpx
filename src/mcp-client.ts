@@ -89,7 +89,19 @@ function httpHeaders(entry: ServerConfig): Record<string, string> {
 }
 
 function createTransport(entry: ServerConfig): Transport {
-  if (hasUrl(entry) && !hasCommand(entry)) {
+  const cmd = hasCommand(entry);
+  const url = hasUrl(entry);
+  if (cmd && url) {
+    throw new Error(
+      "Server must not have both command (stdio) and url (HTTP)",
+    );
+  }
+  if (!cmd && !url) {
+    throw new Error(
+      "Server must have either command (stdio) or url (HTTP)",
+    );
+  }
+  if (url) {
     const headers = httpHeaders(entry);
     const opts =
       Object.keys(headers).length > 0
@@ -98,11 +110,6 @@ function createTransport(entry: ServerConfig): Transport {
     return new StreamableHTTPClientTransport(
       new URL(entry.url as string),
       opts,
-    );
-  }
-  if (!hasCommand(entry)) {
-    throw new Error(
-      "Server must have either command (stdio) or url (HTTP)",
     );
   }
 
