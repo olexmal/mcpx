@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { loadServers, resolveConfigPath } from "./config.js";
+import { loadServers, resolveConfigPath, resolvePurpose } from "./config.js";
 import { writeError, writeJson } from "./output.js";
 
 const program = new Command();
@@ -24,9 +24,10 @@ server
     try {
       const opts = program.opts<{ pretty?: boolean }>();
       const servers = loadServers(resolveConfigPath());
-      // Minimal list shape for harness / missing Config: empty array.
-      // Ticket 02 will expand entries with name + Purpose.
-      const list = Object.keys(servers).map((name) => ({ name }));
+      const list = Object.entries(servers).map(([name, entry]) => ({
+        name,
+        purpose: resolvePurpose(name, entry),
+      }));
       writeJson(list, { pretty: opts.pretty === true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

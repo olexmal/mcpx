@@ -50,7 +50,9 @@ describe("mcpx CLI harness", () => {
     const result = await runMcpx(["server", "list"], { mcpConfig: configPath });
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
-    expect(result.stdout.trim()).toBe('[{"name":"demo"}]');
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"demo","purpose":"demo (command: true)"}]',
+    );
   });
 
   it("forces pretty JSON when --pretty is set", async () => {
@@ -67,6 +69,74 @@ describe("mcpx CLI harness", () => {
       mcpConfig: configPath,
     });
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('[\n  {\n    "name": "demo"\n  }\n]\n');
+    expect(result.stdout).toBe(
+      '[\n  {\n    "name": "demo",\n    "purpose": "demo (command: true)"\n  }\n]\n',
+    );
+  });
+
+  it("uses description as Purpose when set", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          intellij: {
+            description: "IntelliJ IDEA MCP",
+            url: "http://127.0.0.1:64342/mcp",
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(["server", "list"], { mcpConfig: configPath });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"intellij","purpose":"IntelliJ IDEA MCP"}]',
+    );
+  });
+
+  it("falls back Purpose to name + url when description is omitted", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          intellij: { url: "http://127.0.0.1:64342/mcp" },
+        },
+      }),
+    );
+
+    const result = await runMcpx(["server", "list"], { mcpConfig: configPath });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"intellij","purpose":"intellij (url: http://127.0.0.1:64342/mcp)"}]',
+    );
+  });
+
+  it("server list with empty mcpServers prints compact JSON empty array", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(configPath, JSON.stringify({ mcpServers: {} }));
+
+    const result = await runMcpx(["server", "list"], { mcpConfig: configPath });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim()).toBe("[]");
+  });
+
+  it("exits non-zero with clear stderr for malformed Config JSON", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(configPath, "{ not valid json");
+
+    const result = await runMcpx(["server", "list"], { mcpConfig: configPath });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/Invalid JSON in Config file/i);
+    expect(result.stderr).toContain(configPath);
   });
 });

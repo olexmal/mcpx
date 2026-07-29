@@ -4,11 +4,11 @@
 
 **Blocked by:** 01 — Scaffold CLI and acceptance-test harness
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] `mcpx server list` prints Servers from Config as JSON by default (name + Purpose)
-- [ ] Purpose uses `description` when set; otherwise falls back to identifiable config details
-- [ ] Missing or empty Config → empty list, exit 0
-- [ ] Malformed Config JSON → non-zero exit and clear stderr
-- [ ] Hand-edited Config is sufficient (no `server add` required yet)
-- [ ] CLI acceptance test covers list + Purpose fallback + empty/malformed cases
+- [x] `mcpx server list` prints Servers from Config as JSON by default (name + Purpose)
+- [x] Purpose uses `description` when set; otherwise falls back to identifiable config details
+- [x] Missing or empty Config → empty list, exit 0
+- [x] Malformed Config JSON → non-zero exit and clear stderr
+- [x] Hand-edited Config is sufficient (no `server add` required yet)
+- [x] CLI acceptance test covers list + Purpose fallback + empty/malformed cases
