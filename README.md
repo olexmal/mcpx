@@ -4,6 +4,7 @@ Shell CLI that lets agents (and humans) reach multiple configured MCP servers by
 running commands — not by exposing itself as an MCP server.
 
 Domain language: see [`CONTEXT.md`](./CONTEXT.md). Product intent: see [`INCEPTION.md`](./INCEPTION.md).
+Feature backlog: see [`FEATURES.md`](./FEATURES.md).
 
 ## Stack
 
