@@ -13,8 +13,8 @@ A short human/agent-facing explanation of what a Server is for (e.g. IntelliJ ID
 _Avoid_: Capabilities dump, tool list, description-as-live-probe
 
 **Tool**:
-An MCP tool exposed by a Server. Discovered and invoked only in the scope of one chosen Server. Listing or calling Tools always requires an explicit Server name — there is no default Server. v1 exposes only Tools (not resources or prompts).
-_Avoid_: Cross-server aggregate tool, global tool name, implicit default server, resources/prompts in v1
+An MCP tool exposed by a Server. Discovered and invoked only in the scope of one chosen Server. Listing or calling Tools always requires an explicit Server name. v1 exposes only Tools (not resources or prompts).
+_Avoid_: Cross-server aggregate tool, global tool name, omitting `--server`, resources/prompts in v1
 
 **Config**:
 The file `~/.mcpx/mcp.json` holding the user's Servers. Same semantics as a normal MCP `mcpServers` map, with an optional user-authored Purpose (`description`) per Server. Servers are added by pasting/merging a JSON snippet (e.g. IntelliJ Copy HTTP Stream/Stdio Config) or via flag-based `mcpx server add`; removed with `mcpx server remove`. Hand-editing the file remains valid. `mcpx` itself is a CLI binary on `PATH`.

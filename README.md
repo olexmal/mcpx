@@ -73,7 +73,7 @@ Hand-editing `~/.mcpx/mcp.json` is valid. `mcpx` never edits Cursor/IDE
 ## Agent loop
 
 Agents and humans share the same three-step workflow. Always pick a Server by
-name — there is no default.
+name (`-s` / `--server` on Tool commands).
 
 1. **List Servers** (and Purpose) — choose which Server to use
 2. **List Tools** on that Server — learn names, descriptions, and input schemas
@@ -145,7 +145,7 @@ mcpx call-tool --server <name> --tool <tool> --args '<json>'
 
 ## v1 limits
 
-- **No default Server** — `list-tools` and `call-tool` always require `-s` / `--server`
+- **Server required** — `list-tools` and `call-tool` always require `-s` / `--server`
 - **Tools only** — no MCP resources or prompts
 - **No IDE mcp.json edits** — Config is only `~/.mcpx/mcp.json` (or `MCPX_CONFIG`)
 - **No one-off transport** — no `--command` / `--url` on `list-tools` / `call-tool`; register the Server in Config first

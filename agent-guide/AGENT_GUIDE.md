@@ -16,7 +16,7 @@ If that fails, stop and tell the user to install `mcpx` from the project reposit
 
 ## Agent loop (always)
 
-There is **no default Server**. Every Tool operation requires `-s` / `--server <name>`.
+Every Tool operation requires `-s` / `--server <name>`.
 
 1. **List Servers** — choose by Purpose  
    `mcpx server list`
@@ -84,7 +84,6 @@ Prefer JetBrains **Copy HTTP Stream** (Streamable HTTP) over SSE config.
 ## Hard don'ts
 
 - Do not call Tools without `-s` / `--server`
-- Do not assume a default or “primary” Server
 - Do not use one-off `--command` / `--url` on `list-tools` / `call-tool` (v1 has none)
 - Do not treat `mcpx` as an MCP server to add to the IDE
 - Do not use legacy SSE transport

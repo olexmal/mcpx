@@ -18,7 +18,7 @@ It is **not** an MCP server, proxy, or Cursor config injector. Domain language l
 
 **Path:** `~/.mcpx/mcp.json`
 
-**Shape:** same semantics as a normal MCP `mcpServers` map, plus optional user-authored Purpose (`description`). No `default` server. No one-off `--command` / `--url` on tool commands in v1.
+**Shape:** same semantics as a normal MCP `mcpServers` map, plus optional user-authored Purpose (`description`). Tool commands require an explicit Server name. No one-off `--command` / `--url` on tool commands in v1.
 
 ```json
 {
@@ -119,7 +119,6 @@ Each command opens a short-lived connection to that Server, runs the MCP operati
 **Out**
 
 - Acting as an MCP server / gateway for Cursor
-- Default Server
 - One-off `--command` / `--url` bypassing Config
 - Resources and prompts
 - Legacy SSE

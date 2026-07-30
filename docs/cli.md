@@ -2,7 +2,7 @@
 
 `mcpx` is a shell CLI that connects to **named, configured MCP Servers** and exposes their **Tools**. It is not an MCP server, proxy, or IDE config editor.
 
-Noun-first surface. Always pick a Server by name — there is no default.
+Noun-first surface. Always pick a Server by name (`-s` / `--server` on Tool commands).
 
 ## Install
 
@@ -373,7 +373,7 @@ If the MCP Server (e.g. IntelliJ) listens on **Windows** `127.0.0.1`, a `mcpx` p
 
 ## v1 limits
 
-- No default Server — `list-tools` / `call-tool` always require `-s` / `--server`
+- **Server required** — `list-tools` / `call-tool` always require `-s` / `--server`
 - Tools only — no MCP resources or prompts
 - No IDE `mcp.json` edits — only `~/.mcpx/mcp.json` or `MCPX_CONFIG`
 - No one-off `--command` / `--url` on Tool commands
