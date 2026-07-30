@@ -1,0 +1,43 @@
+---
+description: Dry, instruction-dense Markdown for Agent Guide and Adapters
+globs: agent-guide/**/*.md,agent-guide/**/*.mdc
+alwaysApply: false
+---
+
+# Agent-facing Markdown (stay dry)
+
+Write dry, reliable, instruction-dense prose. Optimize for correct agent behavior — not for being interesting to read. No marketing voice.
+
+## Product facts (never violate)
+
+- `mcpx` is a **CLI client**, not an MCP server/gateway. Never instruct agents to edit Cursor/IDE `mcp.json`.
+- Tool commands always require explicit Server (`-s` / `--server`). No implicit default Server.
+
+## Domain terms
+
+Match `CONTEXT.md`: Server, Purpose, Tool, Config, Output, Agent Guide, Adapter, Transport.
+
+## Preserve the contract
+
+- Keep the three-step loop: list Servers → list Tools on one Server → call Tool.
+- Keep Output conventions (JSON on stdout by default; errors on stderr / non-zero exit).
+- Keep Config boundaries (`~/.mcpx/mcp.json`, `MCPX_CONFIG`; hand-edit / CLI manage — not IDE mcp.json).
+
+## Adapters stay thin
+
+Adapters (Cursor `.mdc`, `AGENTS.md` snippets) are pointers to the Agent Guide. Do not duplicate the full CLI reference or the whole Guide inside an Adapter.
+
+```markdown
+<!-- ❌ BAD: Adapter that re-documents every flag -->
+## call-tool
+Usage: mcpx call-tool --server NAME --tool TOOL --args '{...}'
+(…full CLI dump…)
+
+<!-- ✅ GOOD: thin pointer -->
+Follow the Agent Guide at `agent-guide/AGENT_GUIDE.md`.
+Always pass `-s` / `--server` on Tool commands.
+```
+
+## Diagrams
+
+No decorative mermaid. Add a diagram only if it helps agents follow the three-step loop.
