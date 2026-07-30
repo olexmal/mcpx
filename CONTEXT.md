@@ -31,3 +31,11 @@ _Avoid_: Verb-first `list servers` / `call tool` as the canonical surface
 **Transport**:
 How a Server is reached. v1 supports stdio (`command` / `args` / `env`) and Streamable HTTP (`url`, optional headers). Legacy SSE is out of scope for v1.
 _Avoid_: SSE-only clients as a v1 requirement
+
+**Agent Guide**:
+Portable instructions that teach a shell-capable agent how to use `mcpx`: the three-step loop (list Servers → list Tools on one Server → call Tool), Output conventions, and Config boundaries. Canonical form is agent-agnostic Markdown. Distinct from the full human CLI reference and from Config itself.
+_Avoid_: “Rules” as the glossary name; Cursor/IDE-only formats as the only form; substituting for Config; editing Cursor/IDE mcp.json
+
+**Adapter**:
+A thin, tool-specific wrapper (e.g. Cursor rule file, `AGENTS.md` snippet) that points an agent at the Agent Guide. Not a second source of truth for the agent loop.
+_Avoid_: Duplicating the full Agent Guide or CLI reference inside each Adapter

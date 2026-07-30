@@ -1,0 +1,19 @@
+---
+description: Use mcpx CLI to access configured MCP Servers via shell (agent loop)
+alwaysApply: true
+---
+
+# mcpx
+
+When you need MCP Tools that are not available through the IDE’s allowlisted MCP settings, use the **`mcpx`** CLI.
+
+Read and follow the Agent Guide at `mcpx/AGENT_GUIDE.md` in this project.
+
+Essentials:
+
+1. Ensure `mcpx` is on `PATH` (`mcpx --help`). If missing, tell the user to install it — do not edit IDE `mcp.json`.
+2. `mcpx server list` → pick a Server by Purpose (no default Server).
+3. `mcpx list-tools -s <name>` → learn Tools and schemas.
+4. `mcpx call-tool -s <name> --tool <tool> --args '<json-object>'`.
+
+Stdout is JSON; errors on stderr with non-zero exit.

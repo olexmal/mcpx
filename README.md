@@ -160,3 +160,16 @@ npm test
 
 Acceptance tests invoke the built `dist/cli.js` as a black box (exit code,
 stdout, stderr) with `MCPX_CONFIG` pointing at a temp file.
+
+## Agent Guide pack
+
+Redistributable instructions for AI agents (Agent Guide + Cursor / `AGENTS.md`
+Adapters) live in [`agent-guide/`](./agent-guide/). Build the GitHub Release zip:
+
+```bash
+npm run pack:agent-guide
+# → dist-agent-guide/mcpx-agent-guide-<version>.zip
+```
+
+Pushing a `v*` tag runs CI that packs and uploads the zip to the Release.
+See [`docs/adr/0001-agent-guide-pack.md`](./docs/adr/0001-agent-guide-pack.md).
