@@ -14,7 +14,7 @@ Shipped behavior: see [`INCEPTION.md`](./INCEPTION.md), [`docs/cli.md`](./docs/c
 - **Transports** — stdio (`command` / `args` / `env`) and Streamable HTTP (`url` / `headers`).
 - **Agent-first Output** — compact JSON on stdout; `--pretty` / TTY; errors on stderr with exit 1.
 - **Config override** — `MCPX_CONFIG` for disposable / test Config paths.
-- **Project Config** — If `./.mcpx/mcp.json` exists in cwd, use it instead of User Config (`~/.mcpx/mcp.json`); replace, no merge. See [`docs/adr/0002-project-config-replace.md`](./docs/adr/0002-project-config-replace.md).
+- **Project Config** — If `./.mcpx/mcp.json` exists in cwd, it replaces User Config (`~/.mcpx/mcp.json`) for reads and writes (no merge, no ancestor walk). `MCPX_CONFIG` still wins. Empty Config (`{}` / empty `mcpServers`) → empty Server list; blank/non-JSON file → invalid Config. See [`docs/adr/0002-project-config-replace.md`](./docs/adr/0002-project-config-replace.md).
 - **Agent Guide pack** — redistributable Guide + Cursor / `AGENTS.md` Adapters; zip on GitHub Releases (`pack:agent-guide`).
 
 ---
