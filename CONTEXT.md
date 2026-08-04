@@ -25,8 +25,12 @@ The per-user default Config at `~/.mcpx/mcp.json`. Used when no explicit overrid
 _Avoid_: Calling this the only Config; IDE mcp.json
 
 **Project Config**:
-The per-working-directory Config at `./.mcpx/mcp.json` (cwd only, no ancestor walk). When that file exists, it fully replaces User Config for reads and writes; an empty project file means an empty Server list. mcpx does not create this path on `server add` — only when the file already exists, or via a later scaffold command.
-_Avoid_: Walking up to a git root; merging with User Config; auto-creating on first add
+The per-working-directory Config at `./.mcpx/mcp.json` (cwd only, no ancestor walk). When that file exists, it fully replaces User Config for reads and writes. mcpx does not create this path on `server add` — only when the file already exists, or via a later scaffold command.
+_Avoid_: Walking up to a git root; merging with User Config; auto-creating on first add; treating a blank/non-JSON file as Empty Config
+
+**Empty Config**:
+A valid Config whose `mcpServers` map is missing or `{}`, so the Server list is empty. Distinct from a missing Config file and from invalid JSON (including a zero-byte file), which fail rather than counting as Empty Config.
+_Avoid_: Blank files, whitespace-only files, fallthrough to User Config when a present Project Config file is unreadable
 
 **Output**:
 Command results are JSON on stdout by default (agent-first). A human-readable mode is available via `--pretty` and/or when stdout is a TTY. Errors go to stderr with a non-zero exit code.

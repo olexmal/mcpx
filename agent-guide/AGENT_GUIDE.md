@@ -69,7 +69,7 @@ Exactly one transport per Server:
 
 Not both. Not neither. Legacy **SSE** is out of scope — do not register `/sse` endpoints expecting v1 to work.
 
-Empty Project Config ⇒ empty Server list (does not fall through to User Config). Do not create Project Config via `server add` when missing — only when the file already exists, or the user scaffolds it. Do not commit secrets in `headers` / `env`. Hand-editing Config is valid. **Never** edit Cursor/IDE `mcp.json` for mcpx.
+Empty Config (`{}` / empty `mcpServers`) ⇒ empty Server list (does not fall through to User Config). A blank or non-JSON Project Config file is invalid Config — not Empty Config. Do not create Project Config via `server add` when missing — only when the file already exists, or the user scaffolds it. Do not commit secrets in `headers` / `env`. Hand-editing Config is valid. **Never** edit Cursor/IDE `mcp.json` for mcpx.
 
 ### Registering Servers (when the user asks)
 

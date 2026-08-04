@@ -1245,6 +1245,19 @@ describe("Project Config", () => {
     expect(result.stderr).toContain(projectConfig);
   });
 
+  it("zero-byte Project Config is invalid Config (not Empty Config, not User fallthrough)", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(projectConfig, "");
+
+    const result = await runMcpx(["server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain(projectConfig);
+  });
+
   it("list-tools resolves Servers from Project Config", async () => {
     const { home, cwd, projectConfig } = await setupHomeAndCwd();
     await writeFile(

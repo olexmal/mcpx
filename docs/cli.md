@@ -114,7 +114,7 @@ Active Config is whichever file wins, in this order (replace, never merge maps):
 | 2 | Project Config | `./.mcpx/mcp.json` relative to the process cwd, **only if that file exists** (cwd only; no ancestor walk) |
 | 3 | User Config | `~/.mcpx/mcp.json` (`$HOME/.mcpx/mcp.json`) |
 
-When `MCPX_CONFIG` is set, `mcpx` never reads or writes User Config or Project Config. When Project Config exists, it fully replaces User Config for both reads and writes. An empty project file yields an empty Server list. A lone `.mcpx/` directory without `mcp.json` does not activate Project Config. `server add` does not create Project Config — create the file yourself (or use a later scaffold command).
+When `MCPX_CONFIG` is set, `mcpx` never reads or writes User Config or Project Config. When Project Config exists, it fully replaces User Config for both reads and writes. An Empty Config (`{}` or empty `mcpServers`) yields an empty Server list; a present blank or non-JSON file is invalid Config (error), not a fallthrough to User Config. A lone `.mcpx/` directory without `mcp.json` does not activate Project Config. `server add` does not create Project Config — create the file yourself (or use a later scaffold command).
 
 ```bash
 MCPX_CONFIG=/tmp/demo-mcp.json mcpx server list
