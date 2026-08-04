@@ -128,7 +128,7 @@ Redistributable instructions for shell-capable agents (Agent Guide + Cursor / `A
 - [`agent-guide/`](./agent-guide/) — Agent Guide pack
 - [`CONTEXT.md`](./CONTEXT.md) — Domain language
 - [`INCEPTION.md`](./INCEPTION.md) — Problem, vision, scope
-- [`FEATURES.md`](./FEATURES.md) — Shipped / next / won’t
+- [`FEATURES.md`](./FEATURES.md) — Shipped / won’t; backlog is [GitHub issues](https://github.com/olexmal/mcpx/issues)
 - [`docs/adr/0001-agent-guide-pack.md`](./docs/adr/0001-agent-guide-pack.md) — Agent Guide pack ADR
 
 ## Development

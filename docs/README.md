@@ -3,7 +3,7 @@
 | Document | Contents |
 | :--- | :--- |
 | [CLI reference](./cli.md) | Full command surface, Config, output, env vars, agent loop, v1 limits |
-| [Features](../FEATURES.md) | Shipped / Next / Later / Won’t — priority-ordered backlog |
+| [Features](../FEATURES.md) | Shipped / won’t; backlog pointer to GitHub issues |
 | [Agent Guide pack](../agent-guide/) | Redistributable Agent Guide + Adapters (zipped on GitHub Releases) |
 | [ADR 0001 — Agent Guide pack](./adr/0001-agent-guide-pack.md) | Why destination-shaped zip + thin Adapters |
 

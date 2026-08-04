@@ -12,7 +12,7 @@ Write clear, confident, human prose. Short sentences. No jokes, marketing taglin
 
 - `mcpx` is a **CLI client**, not an MCP server/gateway. Never document editing Cursor/IDE `mcp.json` as an mcpx feature.
 - Tool commands always require explicit Server (`-s` / `--server`).
-- Never invent features; stay aligned with `INCEPTION.md`, `FEATURES.md`, and shipped CLI (`docs/cli.md`).
+- Never invent features; stay aligned with `INCEPTION.md`, shipped bullets in `FEATURES.md`, open GitHub backlog issues, and shipped CLI (`docs/cli.md`).
 
 ## Domain terms
 
@@ -27,7 +27,7 @@ Capitalize per `CONTEXT.md`: Server, Purpose, Tool, Config, Output, Agent Guide,
 - Prefer scannable sections; avoid encyclopedia walls on landing pages.
 - One mental-model mermaid diagram when it clarifies the agent loop (list Servers → list Tools → call Tool). No decorative diagrams.
 - Honest badges only (no aspirational npm/CI). Stack details belong in a footer, not the hero.
-- Use a See also for glossary (`CONTEXT.md`) and backlog (`FEATURES.md`) — don’t bury the product hook under link dumps.
+- Use a See also for glossary (`CONTEXT.md`), shipped/won’t (`FEATURES.md`), and backlog (GitHub issues) — don’t bury the product hook under link dumps.
 
 ```markdown
 <!-- ❌ BAD -->
@@ -36,7 +36,7 @@ Capitalize per `CONTEXT.md`: Server, Purpose, Tool, Config, Output, Agent Guide,
 
 <!-- ✅ GOOD -->
 Shell CLI that reaches configured MCP Servers by running commands.
-See also: [CONTEXT.md](./CONTEXT.md), [FEATURES.md](./FEATURES.md). Full CLI: [docs/cli.md](./docs/cli.md).
+See also: [CONTEXT.md](./CONTEXT.md), [FEATURES.md](./FEATURES.md) (shipped / won’t), [GitHub issues](https://github.com/olexmal/mcpx/issues) (backlog). Full CLI: [docs/cli.md](./docs/cli.md).
 ```
 
 ## ADRs (`docs/adr/`)

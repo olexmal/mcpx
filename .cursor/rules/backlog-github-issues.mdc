@@ -1,0 +1,28 @@
+---
+description: Backlog lives in GitHub issues; FEATURES.md is Shipped/Won’t only
+alwaysApply: true
+---
+
+# Backlog workflow (GitHub issues)
+
+## Source of truth
+
+- **Backlog** = open GitHub issues labeled `backlog:next` or `backlog:later`.
+- **FEATURES.md** = Shipped capabilities + Won’t boundaries + pointer to those issue filters. Not a Next/Later list.
+
+## When proposing or scheduling product work
+
+1. Search open issues (`backlog:next` / `backlog:later`) before inventing a new feature.
+2. If missing, open a stub issue: `enhancement` + `needs-triage` + the right `backlog:*` label. Title prefix `[Next NN]` or `[Later NN]` when inserting into an ordered queue.
+3. Do **not** add new Next/Later bullets to `FEATURES.md`.
+4. Do **not** apply `ready-for-agent` until the issue has a grilled / specified body (not a one-line seed).
+
+## When shipping
+
+1. Close the GitHub issue.
+2. Add a concise bullet under **Shipped** in `FEATURES.md`.
+3. Leave **Won’t** unchanged unless the product boundary intentionally changes.
+
+## Won’t
+
+Hard nos stay in `FEATURES.md` only — do not schedule them as backlog issues.
