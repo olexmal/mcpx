@@ -104,22 +104,25 @@ MCP tool result object (typically `{ "content": [ … ] }`, may include `structu
 
 ## Config
 
-### Path
+### Path resolution
 
-| Source | Path |
-| :--- | :--- |
-| Default | `~/.mcpx/mcp.json` (`$HOME/.mcpx/mcp.json`) |
-| Override | `MCPX_CONFIG` — absolute or relative path to an `mcp.json` file |
+Active Config is whichever file wins, in this order (replace, never merge maps):
 
-When `MCPX_CONFIG` is set, `mcpx` never reads or writes the real home Config.
+| Priority | Source | Path |
+| :--- | :--- | :--- |
+| 1 | Override | `MCPX_CONFIG` — absolute or relative path to an `mcp.json` file |
+| 2 | Project Config | `./.mcpx/mcp.json` relative to the process cwd, **only if that file exists** (cwd only; no ancestor walk) |
+| 3 | User Config | `~/.mcpx/mcp.json` (`$HOME/.mcpx/mcp.json`) |
+
+When `MCPX_CONFIG` is set, `mcpx` never reads or writes User Config or Project Config. When Project Config exists, it fully replaces User Config for both reads and writes. An empty project file yields an empty Server list. A lone `.mcpx/` directory without `mcp.json` does not activate Project Config. `server add` does not create Project Config — create the file yourself (or use a later scaffold command).
 
 ```bash
 MCPX_CONFIG=/tmp/demo-mcp.json mcpx server list
 ```
 
-Missing Config file ⇒ empty Server map (success for `server list`). Invalid JSON ⇒ error.
+Missing active Config file ⇒ empty Server map (success for `server list`). Invalid JSON ⇒ error.
 
-Hand-editing Config is valid. `mcpx` never edits Cursor/IDE `mcp.json`.
+Hand-editing Config is valid. Do not commit secrets in `headers` or `env`. `mcpx` never edits Cursor/IDE `mcp.json`.
 
 ### Shape
 
@@ -166,9 +169,9 @@ If `description` is missing or empty:
 
 | Variable | Role |
 | :--- | :--- |
-| `MCPX_CONFIG` | Path to Config file (overrides `~/.mcpx/mcp.json`) |
+| `MCPX_CONFIG` | Path to Config file (overrides Project Config and User Config) |
 | `MCPX_CLIPBOARD` | Snippet text for `server add --from-clipboard` (skips real clipboard; for tests) |
-| `HOME` | Used to resolve default Config under `~/.mcpx/` |
+| `HOME` | Used to resolve User Config under `~/.mcpx/` |
 
 ---
 
@@ -375,7 +378,7 @@ If the MCP Server (e.g. IntelliJ) listens on **Windows** `127.0.0.1`, a `mcpx` p
 
 - **Server required** — `list-tools` / `call-tool` always require `-s` / `--server`
 - Tools only — no MCP resources or prompts
-- No IDE `mcp.json` edits — only `~/.mcpx/mcp.json` or `MCPX_CONFIG`
+- No IDE `mcp.json` edits — only User Config, Project Config, or `MCPX_CONFIG`
 - No one-off `--command` / `--url` on Tool commands
 - stdio + Streamable HTTP only — legacy SSE out of scope
 - No cross-server aggregated / namespaced tool lists

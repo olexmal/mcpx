@@ -52,9 +52,11 @@ Stdout is agent-first JSON by default. Success shapes, pretty/TTY rules, and v1 
 
 ## Config
 
-Default path: `~/.mcpx/mcp.json`
+Resolution order (replace, never merge):
 
-Override with `MCPX_CONFIG` (full path to an `mcp.json`) for tests or disposable environments. When set, `mcpx` reads that file and never touches the home Config.
+1. `MCPX_CONFIG` — disposable / test override; when set, User Config and Project Config are ignored
+2. **Project Config** — `./.mcpx/mcp.json` in the process cwd if that file exists (cwd only; no ancestor walk)
+3. **User Config** — `~/.mcpx/mcp.json`
 
 ```bash
 MCPX_CONFIG=/tmp/demo-mcp.json mcpx server list
@@ -80,7 +82,7 @@ Top-level shape is an `mcpServers` map. The map key is the Server name. Optional
 }
 ```
 
-Hand-editing `~/.mcpx/mcp.json` is valid. `mcpx` never edits Cursor/IDE `mcp.json`.
+Hand-editing Config is valid. Do not commit secrets in `headers` or `env`. `mcpx` never edits Cursor/IDE `mcp.json`.
 
 ## Adding Servers
 

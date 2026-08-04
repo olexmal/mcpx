@@ -3,19 +3,33 @@
  *
  * Override: set `MCPX_CONFIG` to an absolute or relative path to the mcp.json
  * file. Tests and disposable environments should use this so the real
- * `~/.mcpx/mcp.json` is never touched.
+ * User / Project Config files are never touched.
  *
- * Default: `~/.mcpx/mcp.json` (or `$HOME/.mcpx/mcp.json`).
+ * Default: Project Config at `cwd/.mcpx/mcp.json` when that file exists;
+ * otherwise User Config at `~/.mcpx/mcp.json` (or `$HOME/.mcpx/mcp.json`).
  */
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+function isFile(p: string): boolean {
+  try {
+    return fs.statSync(p).isFile();
+  } catch {
+    return false;
+  }
+}
+
 export function resolveConfigPath(
   env: NodeJS.ProcessEnv = process.env,
+  cwd: string = process.cwd(),
 ): string {
   if (env.MCPX_CONFIG && env.MCPX_CONFIG.length > 0) {
     return path.resolve(env.MCPX_CONFIG);
+  }
+  const projectPath = path.join(cwd, ".mcpx", "mcp.json");
+  if (isFile(projectPath)) {
+    return projectPath;
   }
   const home = env.HOME ?? os.homedir();
   return path.join(home, ".mcpx", "mcp.json");

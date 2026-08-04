@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -57,6 +57,33 @@ describe("mcpx CLI harness", () => {
     expect(result.stderr).toBe("");
     expect(result.stdout.trim()).toBe(
       '[{"name":"demo","purpose":"demo (command: true)"}]',
+    );
+  });
+
+  it("reads User Config from HOME when mcpConfig is omitted (cwd + clear MCPX_CONFIG)", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "mcpx-cwd-"));
+    await mkdir(path.join(home, ".mcpx"), { recursive: true });
+    await writeFile(
+      path.join(home, ".mcpx", "mcp.json"),
+      JSON.stringify({
+        mcpServers: { fromhome: { command: "true" } },
+      }),
+    );
+
+    const result = await runMcpx(["server", "list"], {
+      cwd,
+      env: {
+        HOME: home,
+        // Must be ignored when mcpConfig option is omitted
+        MCPX_CONFIG: "/tmp/mcpx-harness-should-ignore/mcp.json",
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"fromhome","purpose":"fromhome (command: true)"}]',
     );
   });
 
@@ -959,5 +986,320 @@ describe("mcpx list-tools / call-tool (Streamable HTTP)", () => {
     expect(result.stdout).toBe("");
     expect(result.stderr.length).toBeGreaterThan(0);
     expect(result.stderr).toMatch(/fail|error|intentional/i);
+  });
+});
+
+describe("Project Config", () => {
+  const fixturePath = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "fixtures/stub-mcp-server.mjs",
+  );
+
+  async function setupHomeAndCwd(): Promise<{
+    home: string;
+    cwd: string;
+    userConfig: string;
+    projectConfig: string;
+  }> {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "mcpx-proj-"));
+    await mkdir(path.join(home, ".mcpx"), { recursive: true });
+    const userConfig = path.join(home, ".mcpx", "mcp.json");
+    await writeFile(
+      userConfig,
+      JSON.stringify({
+        mcpServers: { homeserver: { command: "true", description: "home" } },
+      }),
+    );
+    await mkdir(path.join(cwd, ".mcpx"), { recursive: true });
+    const projectConfig = path.join(cwd, ".mcpx", "mcp.json");
+    return { home, cwd, userConfig, projectConfig };
+  }
+
+  it("server list uses Project Config and ignores User Config when project file exists", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(
+      projectConfig,
+      JSON.stringify({
+        mcpServers: { proj: { command: "true", description: "project" } },
+      }),
+    );
+
+    const result = await runMcpx(["server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"proj","purpose":"project"}]',
+    );
+  });
+
+  it("empty Project Config yields empty list (no User Config fallthrough)", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(projectConfig, JSON.stringify({ mcpServers: {} }));
+
+    const result = await runMcpx(["server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("[]");
+  });
+
+  it("bare {} Project Config yields empty list", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(projectConfig, "{}");
+
+    const result = await runMcpx(["server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("[]");
+  });
+
+  it("missing Project Config falls back to User Config", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "mcpx-proj-"));
+    await mkdir(path.join(home, ".mcpx"), { recursive: true });
+    await writeFile(
+      path.join(home, ".mcpx", "mcp.json"),
+      JSON.stringify({
+        mcpServers: { homeserver: { command: "true", description: "home" } },
+      }),
+    );
+
+    const result = await runMcpx(["server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"homeserver","purpose":"home"}]',
+    );
+  });
+
+  it(".mcpx directory without mcp.json does not activate Project Config", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "mcpx-proj-"));
+    await mkdir(path.join(home, ".mcpx"), { recursive: true });
+    await writeFile(
+      path.join(home, ".mcpx", "mcp.json"),
+      JSON.stringify({
+        mcpServers: { homeserver: { command: "true", description: "home" } },
+      }),
+    );
+    await mkdir(path.join(cwd, ".mcpx"), { recursive: true });
+
+    const result = await runMcpx(["server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"homeserver","purpose":"home"}]',
+    );
+  });
+
+  it("subdirectory cwd without its own project file uses User Config (no ancestor walk)", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(
+      projectConfig,
+      JSON.stringify({
+        mcpServers: { proj: { command: "true", description: "project" } },
+      }),
+    );
+    const sub = path.join(cwd, "packages", "app");
+    await mkdir(sub, { recursive: true });
+
+    const result = await runMcpx(["server", "list"], {
+      cwd: sub,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"homeserver","purpose":"home"}]',
+    );
+  });
+
+  it("MCPX_CONFIG wins when Project Config also exists", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(
+      projectConfig,
+      JSON.stringify({
+        mcpServers: { proj: { command: "true", description: "project" } },
+      }),
+    );
+    const override = path.join(cwd, "override.json");
+    await writeFile(
+      override,
+      JSON.stringify({
+        mcpServers: { env: { command: "true", description: "override" } },
+      }),
+    );
+
+    const result = await runMcpx(["server", "list"], {
+      cwd,
+      env: { HOME: home },
+      mcpConfig: override,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"env","purpose":"override"}]',
+    );
+  });
+
+  it("server add writes Project Config when project file exists", async () => {
+    const { home, cwd, projectConfig, userConfig } = await setupHomeAndCwd();
+    await writeFile(projectConfig, JSON.stringify({ mcpServers: {} }));
+
+    const add = await runMcpx(
+      [
+        "server",
+        "add",
+        "--name",
+        "added",
+        "--command",
+        "true",
+        "--description",
+        "from add",
+      ],
+      { cwd, env: { HOME: home } },
+    );
+    expect(add.exitCode).toBe(0);
+
+    const projectRaw = JSON.parse(await readFile(projectConfig, "utf8")) as {
+      mcpServers: Record<string, unknown>;
+    };
+    expect(projectRaw.mcpServers.added).toEqual({
+      command: "true",
+      description: "from add",
+    });
+
+    const userRaw = JSON.parse(await readFile(userConfig, "utf8")) as {
+      mcpServers: Record<string, unknown>;
+    };
+    expect(userRaw.mcpServers.added).toBeUndefined();
+    expect(userRaw.mcpServers.homeserver).toBeDefined();
+  });
+
+  it("server add without Project Config writes User Config and does not create project file", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "mcpx-proj-"));
+    await mkdir(path.join(home, ".mcpx"), { recursive: true });
+    await writeFile(
+      path.join(home, ".mcpx", "mcp.json"),
+      JSON.stringify({ mcpServers: {} }),
+    );
+
+    const add = await runMcpx(
+      ["server", "add", "--name", "u", "--command", "true"],
+      { cwd, env: { HOME: home } },
+    );
+    expect(add.exitCode).toBe(0);
+
+    const userRaw = JSON.parse(
+      await readFile(path.join(home, ".mcpx", "mcp.json"), "utf8"),
+    ) as { mcpServers: Record<string, unknown> };
+    expect(userRaw.mcpServers.u).toBeDefined();
+
+    await expect(access(path.join(cwd, ".mcpx", "mcp.json"))).rejects.toThrow();
+  });
+
+  it("server remove mutates Project Config when active", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(
+      projectConfig,
+      JSON.stringify({
+        mcpServers: {
+          keep: { command: "true" },
+          drop: { command: "true" },
+        },
+      }),
+    );
+
+    const remove = await runMcpx(["server", "remove", "drop"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(remove.exitCode).toBe(0);
+
+    const raw = JSON.parse(await readFile(projectConfig, "utf8")) as {
+      mcpServers: Record<string, unknown>;
+    };
+    expect(raw.mcpServers.drop).toBeUndefined();
+    expect(raw.mcpServers.keep).toBeDefined();
+  });
+
+  it("malformed Project Config fails with project path on stderr", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(projectConfig, "{ not json");
+
+    const result = await runMcpx(["server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain(projectConfig);
+  });
+
+  it("list-tools resolves Servers from Project Config", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(
+      projectConfig,
+      JSON.stringify({
+        mcpServers: {
+          stub: {
+            command: process.execPath,
+            args: [fixturePath],
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(["list-tools", "-s", "stub"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    const tools = JSON.parse(result.stdout) as Array<{ name: string }>;
+    expect(tools.some((t) => t.name === "echo")).toBe(true);
+  });
+
+  it("call-tool resolves Servers from Project Config", async () => {
+    const { home, cwd, projectConfig } = await setupHomeAndCwd();
+    await writeFile(
+      projectConfig,
+      JSON.stringify({
+        mcpServers: {
+          stub: {
+            command: process.execPath,
+            args: [fixturePath],
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "-s",
+        "stub",
+        "--tool",
+        "echo",
+        "--args",
+        '{"message":"from-project"}',
+      ],
+      { cwd, env: { HOME: home } },
+    );
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      content: Array<{ type: string; text: string }>;
+    };
+    expect(payload.content).toEqual([
+      { type: "text", text: "from-project" },
+    ]);
   });
 });

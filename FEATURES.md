@@ -8,12 +8,13 @@ Shipped behavior: see [`INCEPTION.md`](./INCEPTION.md), [`docs/cli.md`](./docs/c
 
 ## Shipped
 
-- **Named Servers in Config** — `~/.mcpx/mcp.json` (`mcpServers` map) with optional Purpose (`description`).
+- **Named Servers in Config** — `mcpServers` map with optional Purpose (`description`).
 - **Server management** — `server list` / `add` (flags, `--from-file`, `--from-clipboard`) / `remove`.
 - **Tool loop** — `list-tools` and `call-tool` with required `-s` / `--server`.
 - **Transports** — stdio (`command` / `args` / `env`) and Streamable HTTP (`url` / `headers`).
 - **Agent-first Output** — compact JSON on stdout; `--pretty` / TTY; errors on stderr with exit 1.
 - **Config override** — `MCPX_CONFIG` for disposable / test Config paths.
+- **Project Config** — If `./.mcpx/mcp.json` exists in cwd, use it instead of User Config (`~/.mcpx/mcp.json`); replace, no merge. See [`docs/adr/0002-project-config-replace.md`](./docs/adr/0002-project-config-replace.md).
 - **Agent Guide pack** — redistributable Guide + Cursor / `AGENTS.md` Adapters; zip on GitHub Releases (`pack:agent-guide`).
 
 ---
@@ -23,22 +24,21 @@ Shipped behavior: see [`INCEPTION.md`](./INCEPTION.md), [`docs/cli.md`](./docs/c
 Highest priority first.
 
 1. **Publish `mcpx` on npm** — Install globally with npm without cloning and `npm link`.
-2. **Project-level Config** — If `./.mcpx/mcp.json` exists, use it instead of `~/.mcpx/mcp.json` (replace, no merge); otherwise keep the user Config.
-3. **`--config <path>` flag** — Per-invocation Config path for scripts and CI without relying on env alone.
-4. **`mcpx doctor`** — Validate Config shape and probe connect to each Server (surface bad URLs, SSE vs Streamable HTTP, unreachable localhost).
-5. **`server update` / edit** — Change Purpose, url, headers, command/args/env without remove+add.
-6. **Validate `--args` against `inputSchema`** — Fail fast before connect when Tool arguments don’t match the schema from `list-tools`.
-7. **`call-tool` args from stdin or file** — Pass large / nested JSON without shell-escaping pain (`--args-file` / stdin).
-8. **Auth helper for HTTP headers** — Resolve bearer (or other) tokens from env or a file into `headers` without storing secrets in Config.
-9. **`mcpx init`** — Scaffold project `.mcpx/mcp.json` and optionally drop the Agent Guide pack files into the repo.
-10. **Structured exit codes** — Distinct non-zero codes for usage vs Config vs connect vs Tool error so agents can branch reliably.
-11. **Shell completions** — Complete Server names (and Tool names after `-s` where practical).
-12. **MCP resources** — `list-resources` / `read-resource` scoped with `-s` / `--server`.
-13. **MCP prompts** — List/get prompts scoped with `-s` / `--server`.
-14. **Legacy SSE transport** — Connect to IntelliJ-style `/sse` endpoints users still copy from the IDE.
-15. **Prebuilt CLI binaries on Releases** — Multi-OS binaries alongside the Agent Guide zip.
-16. **One-off `--url` / `--command` on Tool commands** — Ad-hoc Server without writing Config (escape hatch).
-17. **Cross-server Tool discovery** — Aggregate or namespaced `list-tools` across all configured Servers.
+2. **`--config <path>` flag** — Per-invocation Config path for scripts and CI without relying on env alone.
+3. **`mcpx doctor`** — Validate Config shape and probe connect to each Server (surface bad URLs, SSE vs Streamable HTTP, unreachable localhost).
+4. **`server update` / edit** — Change Purpose, url, headers, command/args/env without remove+add.
+5. **Validate `--args` against `inputSchema`** — Fail fast before connect when Tool arguments don’t match the schema from `list-tools`.
+6. **`call-tool` args from stdin or file** — Pass large / nested JSON without shell-escaping pain (`--args-file` / stdin).
+7. **Auth helper for HTTP headers** — Resolve bearer (or other) tokens from env or a file into `headers` without storing secrets in Config.
+8. **`mcpx init`** — Scaffold project `.mcpx/mcp.json` and optionally drop the Agent Guide pack files into the repo.
+9. **Structured exit codes** — Distinct non-zero codes for usage vs Config vs connect vs Tool error so agents can branch reliably.
+10. **Shell completions** — Complete Server names (and Tool names after `-s` where practical).
+11. **MCP resources** — `list-resources` / `read-resource` scoped with `-s` / `--server`.
+12. **MCP prompts** — List/get prompts scoped with `-s` / `--server`.
+13. **Legacy SSE transport** — Connect to IntelliJ-style `/sse` endpoints users still copy from the IDE.
+14. **Prebuilt CLI binaries on Releases** — Multi-OS binaries alongside the Agent Guide zip.
+15. **One-off `--url` / `--command` on Tool commands** — Ad-hoc Server without writing Config (escape hatch).
+16. **Cross-server Tool discovery** — Aggregate or namespaced `list-tools` across all configured Servers.
 
 ---
 

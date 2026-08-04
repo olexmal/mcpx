@@ -15,10 +15,15 @@ export async function runMcpx(
   args: string[],
   options: {
     env?: NodeJS.ProcessEnv;
+    /** When set, forces MCPX_CONFIG. When omitted, MCPX_CONFIG is cleared so default resolution applies. */
     mcpConfig?: string;
+    /** Working directory for the CLI process (default: repo root). */
+    cwd?: string;
   } = {},
 ): Promise<RunResult> {
   const env: NodeJS.ProcessEnv = { ...process.env, ...options.env };
+  // Isolate from the parent shell: only mcpConfig opts into an override.
+  delete env.MCPX_CONFIG;
   if (options.mcpConfig !== undefined) {
     env.MCPX_CONFIG = options.mcpConfig;
   }
@@ -26,7 +31,7 @@ export async function runMcpx(
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [cliPath, ...args], {
       env,
-      cwd: root,
+      cwd: options.cwd ?? root,
     });
 
     let stdout = "";

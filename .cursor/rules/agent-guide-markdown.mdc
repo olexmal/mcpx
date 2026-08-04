@@ -21,7 +21,7 @@ Match `CONTEXT.md`: Server, Purpose, Tool, Config, Output, Agent Guide, Adapter,
 
 - Keep the three-step loop: list Servers → list Tools on one Server → call Tool.
 - Keep Output conventions (JSON on stdout by default; errors on stderr / non-zero exit).
-- Keep Config boundaries (`~/.mcpx/mcp.json`, `MCPX_CONFIG`; hand-edit / CLI manage — not IDE mcp.json).
+- Keep Config boundaries (`MCPX_CONFIG` → Project Config `./.mcpx/mcp.json` → User Config `~/.mcpx/mcp.json`; hand-edit / CLI manage — not IDE mcp.json).
 
 ## Adapters stay thin
 

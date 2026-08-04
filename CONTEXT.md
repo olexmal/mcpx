@@ -17,8 +17,16 @@ An MCP tool exposed by a Server. Discovered and invoked only in the scope of one
 _Avoid_: Cross-server aggregate tool, global tool name, omitting `--server`, resources/prompts in v1
 
 **Config**:
-The file `~/.mcpx/mcp.json` holding the user's Servers. Same semantics as a normal MCP `mcpServers` map, with an optional user-authored Purpose (`description`) per Server. Servers are added by pasting/merging a JSON snippet (e.g. IntelliJ Copy HTTP Stream/Stdio Config) or via flag-based `mcpx server add`; removed with `mcpx server remove`. Hand-editing the file remains valid. `mcpx` itself is a CLI binary on `PATH`.
-_Avoid_: Editing Cursor/IDE mcp.json, `config.json` as the filename, paste-only or flags-only as the sole path
+The active `mcp.json` mcpx reads and writes after resolution. Same semantics as a normal MCP `mcpServers` map, with an optional user-authored Purpose (`description`) per Server. Servers are added by pasting/merging a JSON snippet (e.g. IntelliJ Copy HTTP Stream/Stdio Config) or via flag-based `mcpx server add`; removed with `mcpx server remove`. Hand-editing remains valid. Explicit override (`MCPX_CONFIG`, later `--config`) wins; else Project Config if that file exists; else User Config. Replace only — never merge maps.
+_Avoid_: Editing Cursor/IDE mcp.json, `config.json` as the filename, paste-only or flags-only as the sole path, merging User and Project maps
+
+**User Config**:
+The per-user default Config at `~/.mcpx/mcp.json`. Used when no explicit override is set and no Project Config file exists in the current working directory.
+_Avoid_: Calling this the only Config; IDE mcp.json
+
+**Project Config**:
+The per-working-directory Config at `./.mcpx/mcp.json` (cwd only, no ancestor walk). When that file exists, it fully replaces User Config for reads and writes; an empty project file means an empty Server list. mcpx does not create this path on `server add` — only when the file already exists, or via a later scaffold command.
+_Avoid_: Walking up to a git root; merging with User Config; auto-creating on first add
 
 **Output**:
 Command results are JSON on stdout by default (agent-first). A human-readable mode is available via `--pretty` and/or when stdout is a TTY. Errors go to stderr with a non-zero exit code.

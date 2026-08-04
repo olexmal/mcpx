@@ -56,8 +56,9 @@ Parse stdout JSON on success. On failure, read stderr; do not expect a JSON erro
 
 | Item | Value |
 | :--- | :--- |
-| Default path | `~/.mcpx/mcp.json` |
-| Override | `MCPX_CONFIG` = path to an `mcp.json` |
+| Override | `MCPX_CONFIG` = path to an `mcp.json` (wins over everything) |
+| Project Config | `./.mcpx/mcp.json` in cwd if that **file** exists (replace User Config; no merge; no ancestor walk) |
+| User Config | `~/.mcpx/mcp.json` when no override and no Project Config file |
 | Shape | `{ "mcpServers": { "<name>": { … } } }` |
 | Purpose | optional `description`; else fallback from name + command/url |
 
@@ -68,7 +69,7 @@ Exactly one transport per Server:
 
 Not both. Not neither. Legacy **SSE** is out of scope — do not register `/sse` endpoints expecting v1 to work.
 
-Hand-editing `~/.mcpx/mcp.json` is valid. **Never** edit Cursor/IDE `mcp.json` for mcpx.
+Empty Project Config ⇒ empty Server list (does not fall through to User Config). Do not create Project Config via `server add` when missing — only when the file already exists, or the user scaffolds it. Do not commit secrets in `headers` / `env`. Hand-editing Config is valid. **Never** edit Cursor/IDE `mcp.json` for mcpx.
 
 ### Registering Servers (when the user asks)
 

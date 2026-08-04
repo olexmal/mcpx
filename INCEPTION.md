@@ -16,7 +16,7 @@ It is **not** an MCP server, proxy, or Cursor config injector. Domain language l
 
 ## Config
 
-**Path:** `~/.mcpx/mcp.json`
+**Path (resolution order, replace not merge):** `MCPX_CONFIG` if set; else Project Config `./.mcpx/mcp.json` when that file exists in cwd; else User Config `~/.mcpx/mcp.json`.
 
 **Shape:** same semantics as a normal MCP `mcpServers` map, plus optional user-authored Purpose (`description`). Tool commands require an explicit Server name. No one-off `--command` / `--url` on tool commands in v1.
 
@@ -62,7 +62,7 @@ mcpx server add --from-file snippet.json          # or --from-clipboard: merge m
 mcpx server remove <name>
 ```
 
-Hand-editing `~/.mcpx/mcp.json` remains valid.
+Hand-editing Config remains valid.
 
 ### Tools (Server required)
 
@@ -109,7 +109,7 @@ Each command opens a short-lived connection to that Server, runs the MCP operati
 
 **In**
 
-- Multi-Server Config at `~/.mcpx/mcp.json`
+- Multi-Server Config (User Config, optional Project Config, or `MCPX_CONFIG`)
 - `server list|add|remove` (flags + paste/merge)
 - `list-tools` / `call-tool` with mandatory `--server`
 - Tools only
@@ -131,7 +131,7 @@ Suggested modules (language TBD):
 
 | Module | Responsibility |
 | :--- | :--- |
-| `config` | Load/save `~/.mcpx/mcp.json`; resolve Server by name; merge snippets; Purpose fallback |
+| `config` | Resolve/load/save active Config; resolve Server by name; merge snippets; Purpose fallback |
 | `client` | Connect via stdio or Streamable HTTP; `listTools` / `callTool`; always close |
 | `commands/server` | list / add / remove |
 | `commands/tools` | `list-tools`, `call-tool` (require `--server`) |
