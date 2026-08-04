@@ -1,0 +1,58 @@
+name: Bug report
+description: Something isn't working as documented
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Fill in what you can — blank fields are fine when unknown.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong in one or two sentences?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands and Config shape if relevant (redact secrets).
+      placeholder: |
+        1. mcpx server add …
+        2. mcpx list-tools -s …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include stdout/stderr and exit code when useful.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: mcpx / Node versions
+      description: e.g. mcpx 0.1.0, Node 22.x
+    validations:
+      required: false
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Linux
+        - macOS
+        - Windows / WSL
+        - Other
+    validations:
+      required: false

@@ -139,3 +139,7 @@ npm test
 Acceptance tests invoke the built `dist/cli.js` as a black box (exit code, stdout, stderr) with `MCPX_CONFIG` pointing at a temp file.
 
 Stack: Node ≥20 · [commander](https://github.com/tj/commander.js) · [MCP SDK](https://www.npmjs.com/package/@modelcontextprotocol/sdk) · [Vitest](https://vitest.dev/)
+
+## Contributing
+
+Use [GitHub Issues](https://github.com/olexmal/mcpx/issues) for bugs and feature requests (Bug report and Feature request forms are available; blank issues are fine too). Run `npm run typecheck` and `npm test` before opening a PR.

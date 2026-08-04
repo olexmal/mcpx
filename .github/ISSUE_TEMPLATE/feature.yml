@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose a new capability or enhancement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first, then the proposal. Check [FEATURES.md](https://github.com/olexmal/mcpx/blob/main/FEATURES.md) for shipped / next / won’t.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can’t you do today, or what’s painful?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How should mcpx behave?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance ideas
+      description: Optional checklist of what “done” would look like.
+      placeholder: |
+        - [ ] …
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds or approaches you already ruled out.
+    validations:
+      required: false
