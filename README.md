@@ -54,11 +54,15 @@ Stdout is agent-first JSON by default. Success shapes, pretty/TTY rules, and v1 
 
 Resolution order (replace, never merge):
 
-1. `MCPX_CONFIG` — disposable / test override; when set, User Config and Project Config are ignored
-2. **Project Config** — `./.mcpx/mcp.json` in the process cwd if that file exists (cwd only; no ancestor walk)
-3. **User Config** — `~/.mcpx/mcp.json`
+1. `-c` / `--config <path>` — per-invocation Config **file** (wins over env)
+2. `MCPX_CONFIG` — disposable / test override; same path rules as `--config`
+3. **Project Config** — `./.mcpx/mcp.json` in the process cwd if that file exists (cwd only; no ancestor walk)
+4. **User Config** — `~/.mcpx/mcp.json`
+
+Override paths are absolute or cwd-relative; leading `~` / `~/…` expands to home. A path that is an existing directory is an error.
 
 ```bash
+mcpx --config /tmp/demo-mcp.json server list
 MCPX_CONFIG=/tmp/demo-mcp.json mcpx server list
 ```
 

@@ -24,8 +24,17 @@ program
   .description(
     "CLI for agent access to configured MCP Servers. JSON on stdout by default; use --pretty for human-readable output.",
   )
+  .option(
+    "-c, --config <path>",
+    "Explicit Config file (wins over MCPX_CONFIG, Project Config, and User Config)",
+  )
   .option("--pretty", "Force human-readable (pretty) JSON on stdout")
   .showHelpAfterError(false);
+
+function activeConfigPath(): string {
+  const { config } = program.opts<{ config?: string }>();
+  return resolveConfigPath(process.env, process.cwd(), config);
+}
 
 const server = program
   .command("server")
@@ -37,7 +46,7 @@ server
   .action(() => {
     try {
       const opts = program.opts<{ pretty?: boolean }>();
-      const servers = loadServers(resolveConfigPath());
+      const servers = loadServers(activeConfigPath());
       const list = Object.entries(servers).map(([name, entry]) => ({
         name,
         purpose: resolvePurpose(name, entry),
@@ -99,7 +108,7 @@ function hasFlagTransport(opts: AddOpts): boolean {
 }
 
 function addFromSnippet(raw: string, name: string | undefined): void {
-  const configPath = resolveConfigPath();
+  const configPath = activeConfigPath();
   const existing = loadServers(configPath);
   const incoming = parseServerSnippet(raw, name);
   const merged = mergeServers(existing, incoming);
@@ -111,7 +120,7 @@ function addFromFlags(opts: AddOpts): void {
     throw new Error("Missing required option --name <name>");
   }
 
-  const configPath = resolveConfigPath();
+  const configPath = activeConfigPath();
   const servers = loadServers(configPath);
   if (Object.prototype.hasOwnProperty.call(servers, opts.name)) {
     throw new Error(`Server already exists (duplicate name): ${opts.name}`);
@@ -195,7 +204,7 @@ server
   .argument("<name>", "Server name")
   .action((name: string) => {
     try {
-      const configPath = resolveConfigPath();
+      const configPath = activeConfigPath();
       const servers = loadServers(configPath);
       if (!Object.prototype.hasOwnProperty.call(servers, name)) {
         throw new Error(`Server not found (unknown name): ${name}`);
@@ -209,7 +218,7 @@ server
   });
 
 function resolveServer(name: string): ServerConfig {
-  const servers = loadServers(resolveConfigPath());
+  const servers = loadServers(activeConfigPath());
   if (!Object.prototype.hasOwnProperty.call(servers, name)) {
     throw new Error(`Server not found (unknown name): ${name}`);
   }

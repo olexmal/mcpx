@@ -17,7 +17,7 @@ An MCP tool exposed by a Server. Discovered and invoked only in the scope of one
 _Avoid_: Cross-server aggregate tool, global tool name, omitting `--server`, resources/prompts in v1
 
 **Config**:
-The active `mcp.json` mcpx reads and writes after resolution. Same semantics as a normal MCP `mcpServers` map, with an optional user-authored Purpose (`description`) per Server. Servers are added by pasting/merging a JSON snippet (e.g. IntelliJ Copy HTTP Stream/Stdio Config) or via flag-based `mcpx server add`; removed with `mcpx server remove`. Hand-editing remains valid. Explicit override (`MCPX_CONFIG`, later `--config`) wins; else Project Config if that file exists; else User Config. Replace only — never merge maps.
+The active `mcp.json` mcpx reads and writes after resolution. Same semantics as a normal MCP `mcpServers` map, with an optional user-authored Purpose (`description`) per Server. Servers are added by pasting/merging a JSON snippet (e.g. IntelliJ Copy HTTP Stream/Stdio Config) or via flag-based `mcpx server add`; removed with `mcpx server remove`. Hand-editing remains valid. Explicit override wins: `--config` if set, else `MCPX_CONFIG` if set; else Project Config if that file exists; else User Config. Replace only — never merge maps.
 _Avoid_: Editing Cursor/IDE mcp.json, `config.json` as the filename, paste-only or flags-only as the sole path, merging User and Project maps
 
 **User Config**:

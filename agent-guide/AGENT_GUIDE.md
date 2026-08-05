@@ -56,7 +56,7 @@ Parse stdout JSON on success. On failure, read stderr; do not expect a JSON erro
 
 | Item | Value |
 | :--- | :--- |
-| Override | `MCPX_CONFIG` = path to an `mcp.json` (wins over everything) |
+| Override | `-c` / `--config <path>` (wins), else `MCPX_CONFIG` — file path; leading `~` ok |
 | Project Config | `./.mcpx/mcp.json` in cwd if that **file** exists (replace User Config; no merge; no ancestor walk) |
 | User Config | `~/.mcpx/mcp.json` when no override and no Project Config file |
 | Shape | `{ "mcpServers": { "<name>": { … } } }` |

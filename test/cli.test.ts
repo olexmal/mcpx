@@ -18,6 +18,7 @@ describe("mcpx CLI harness", () => {
     expect(result.stdout).toMatch(/list \| add \| remove/);
     expect(result.stdout).toMatch(/list-tools/);
     expect(result.stdout).toMatch(/call-tool/);
+    expect(result.stdout).toMatch(/--config/);
   });
 
   it("prints help and exits 0 when invoked with no args", async () => {
@@ -1314,5 +1315,297 @@ describe("Project Config", () => {
     expect(payload.content).toEqual([
       { type: "text", text: "from-project" },
     ]);
+  });
+});
+
+describe("--config / -c flag", () => {
+  it("reads Config from --config and ignores User Config", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "mcpx-cwd-"));
+    await mkdir(path.join(home, ".mcpx"), { recursive: true });
+    await writeFile(
+      path.join(home, ".mcpx", "mcp.json"),
+      JSON.stringify({
+        mcpServers: { fromhome: { command: "true", description: "home" } },
+      }),
+    );
+    const override = path.join(cwd, "override.json");
+    await writeFile(
+      override,
+      JSON.stringify({
+        mcpServers: { fromflag: { command: "true", description: "flag" } },
+      }),
+    );
+
+    const result = await runMcpx(["--config", override, "server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"fromflag","purpose":"flag"}]',
+    );
+  });
+
+  it("--config wins over MCPX_CONFIG when both are set", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const fromEnv = path.join(dir, "env.json");
+    const fromFlag = path.join(dir, "flag.json");
+    await writeFile(
+      fromEnv,
+      JSON.stringify({
+        mcpServers: { envserver: { command: "true", description: "env" } },
+      }),
+    );
+    await writeFile(
+      fromFlag,
+      JSON.stringify({
+        mcpServers: { flagserver: { command: "true", description: "flag" } },
+      }),
+    );
+
+    const result = await runMcpx(["--config", fromFlag, "server", "list"], {
+      mcpConfig: fromEnv,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"flagserver","purpose":"flag"}]',
+    );
+  });
+
+  it("--config wins over Project Config when both apply", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "mcpx-cwd-"));
+    await mkdir(path.join(cwd, ".mcpx"), { recursive: true });
+    await writeFile(
+      path.join(cwd, ".mcpx", "mcp.json"),
+      JSON.stringify({
+        mcpServers: { proj: { command: "true", description: "project" } },
+      }),
+    );
+    const override = path.join(cwd, "flag.json");
+    await writeFile(
+      override,
+      JSON.stringify({
+        mcpServers: { flag: { command: "true", description: "flag" } },
+      }),
+    );
+
+    const result = await runMcpx(["--config", override, "server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"flag","purpose":"flag"}]',
+    );
+  });
+
+  it("accepts -c as an alias for --config", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: { short: { command: "true", description: "short" } },
+      }),
+    );
+
+    const result = await runMcpx(["-c", configPath, "server", "list"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"short","purpose":"short"}]',
+    );
+  });
+
+  it("resolves relative --config against cwd", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "mcpx-cwd-"));
+    await writeFile(
+      path.join(cwd, "rel.json"),
+      JSON.stringify({
+        mcpServers: { rel: { command: "true", description: "relative" } },
+      }),
+    );
+
+    const result = await runMcpx(["--config", "./rel.json", "server", "list"], {
+      cwd,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"rel","purpose":"relative"}]',
+    );
+  });
+
+  it("expands leading tilde in --config", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    await writeFile(
+      path.join(home, "tilde-flag.json"),
+      JSON.stringify({
+        mcpServers: { t: { command: "true", description: "tilde-flag" } },
+      }),
+    );
+
+    const result = await runMcpx(
+      ["--config", "~/tilde-flag.json", "server", "list"],
+      { env: { HOME: home } },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"t","purpose":"tilde-flag"}]',
+    );
+  });
+
+  it("expands leading tilde in MCPX_CONFIG", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    const configPath = path.join(home, "tilde-env.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: { t: { command: "true", description: "tilde-env" } },
+      }),
+    );
+
+    const result = await runMcpx(["server", "list"], {
+      mcpConfig: "~/tilde-env.json",
+      env: { HOME: home },
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(
+      '[{"name":"t","purpose":"tilde-env"}]',
+    );
+  });
+
+  it("fails when --config points at an existing directory", async () => {
+    const home = await mkdtemp(path.join(os.tmpdir(), "mcpx-home-"));
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "mcpx-cwd-"));
+    const dirPath = await mkdtemp(path.join(os.tmpdir(), "mcpx-as-dir-"));
+    await mkdir(path.join(home, ".mcpx"), { recursive: true });
+    await writeFile(
+      path.join(home, ".mcpx", "mcp.json"),
+      JSON.stringify({
+        mcpServers: { fromhome: { command: "true", description: "home" } },
+      }),
+    );
+
+    const result = await runMcpx(["--config", dirPath, "server", "list"], {
+      cwd,
+      env: { HOME: home },
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toMatch(/directory/i);
+    expect(result.stderr).toMatch(/expected a file/i);
+    expect(result.stdout).toBe("");
+  });
+
+  it("missing --config file yields Empty Config on server list", async () => {
+    const missing = path.join(
+      os.tmpdir(),
+      `mcpx-missing-${Date.now()}`,
+      "mcp.json",
+    );
+    const result = await runMcpx(["--config", missing, "server", "list"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim()).toBe("[]");
+  });
+
+  it("server add writes to --config path", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const nested = path.join(dir, "nested", "override.json");
+
+    const add = await runMcpx([
+      "--config",
+      nested,
+      "server",
+      "add",
+      "--name",
+      "written",
+      "--command",
+      "true",
+      "--description",
+      "via-flag",
+    ]);
+    expect(add.exitCode).toBe(0);
+    expect(add.stderr).toBe("");
+
+    const onDisk = JSON.parse(await readFile(nested, "utf8")) as {
+      mcpServers: Record<string, { command: string; description: string }>;
+    };
+    expect(onDisk.mcpServers.written).toEqual({
+      command: "true",
+      description: "via-flag",
+    });
+
+    const list = await runMcpx(["--config", nested, "server", "list"]);
+    expect(list.exitCode).toBe(0);
+    expect(list.stdout.trim()).toBe(
+      '[{"name":"written","purpose":"via-flag"}]',
+    );
+  });
+
+  it("server remove mutates the --config file", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          keep: { command: "true", description: "keep" },
+          drop: { command: "true", description: "drop" },
+        },
+      }),
+    );
+
+    const remove = await runMcpx([
+      "--config",
+      configPath,
+      "server",
+      "remove",
+      "drop",
+    ]);
+    expect(remove.exitCode).toBe(0);
+
+    const list = await runMcpx(["--config", configPath, "server", "list"]);
+    expect(list.exitCode).toBe(0);
+    expect(list.stdout.trim()).toBe(
+      '[{"name":"keep","purpose":"keep"}]',
+    );
+  });
+
+  it("list-tools resolves Servers from --config", async () => {
+    const fixturePath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "fixtures/stub-mcp-server.mjs",
+    );
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          stub: {
+            command: process.execPath,
+            args: [fixturePath],
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(
+      ["--config", configPath, "list-tools", "-s", "stub"],
+    );
+    expect(result.exitCode).toBe(0);
+    const tools = JSON.parse(result.stdout) as Array<{ name: string }>;
+    expect(tools.some((t) => t.name === "echo")).toBe(true);
+  });
+
+  it("fails when MCPX_CONFIG points at an existing directory", async () => {
+    const dirPath = await mkdtemp(path.join(os.tmpdir(), "mcpx-as-dir-"));
+    const result = await runMcpx(["server", "list"], { mcpConfig: dirPath });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toMatch(/directory/i);
+    expect(result.stderr).toMatch(/expected a file/i);
+    expect(result.stdout).toBe("");
   });
 });

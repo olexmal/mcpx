@@ -1,6 +1,6 @@
 # Project Config replaces User Config (cwd only)
 
-When `cwd/.mcpx/mcp.json` exists, it is the active Config for both reads and writes — full replace, no merge with `~/.mcpx/mcp.json`. Discovery is cwd-only (no ancestor walk). Explicit override (`MCPX_CONFIG`, later `--config`) still wins over Project Config so tests and scripts stay predictable. mcpx never creates the project path on `server add`. An Empty Config (`{}` or empty `mcpServers`) yields an empty Server list; a present blank or non-JSON file is invalid Config (error), not Empty Config and not a fallthrough to User Config. Merge-on-clash stays a later option if replace-only proves too strict.
+When `cwd/.mcpx/mcp.json` exists, it is the active Config for both reads and writes — full replace, no merge with `~/.mcpx/mcp.json`. Discovery is cwd-only (no ancestor walk). Explicit override (`--config` / `-c`, else `MCPX_CONFIG`) still wins over Project Config so tests and scripts stay predictable. mcpx never creates the project path on `server add`. An Empty Config (`{}` or empty `mcpServers`) yields an empty Server list; a present blank or non-JSON file is invalid Config (error), not Empty Config and not a fallthrough to User Config. Merge-on-clash stays a later option if replace-only proves too strict.
 
 ## Considered options
 

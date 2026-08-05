@@ -32,7 +32,7 @@ Each Tool command opens a short-lived connection, runs the MCP operation, then d
 ## Synopsis
 
 ```text
-mcpx [--pretty] <command>
+mcpx [-c|--config <path>] [--pretty] <command>
 
 mcpx server list
 mcpx server add [options]
@@ -49,13 +49,15 @@ With no arguments, `mcpx` prints help and exits 0.
 
 | Option | Description |
 | :--- | :--- |
+| `-c`, `--config <path>` | Explicit Config **file** for this process (reads and writes). Wins over `MCPX_CONFIG`, Project Config, and User Config. Absolute or cwd-relative; leading `~` / `~/…` expands to home. A path that is an existing directory is an error. |
 | `--pretty` | Force indented JSON on stdout |
 | `-h`, `--help` | Show help |
 
-`--pretty` applies to commands that write JSON (`server list`, `list-tools`, `call-tool`). Place it before the subcommand:
+`--config` and `--pretty` apply to all commands. Place global options before the subcommand:
 
 ```bash
-mcpx --pretty server list
+mcpx --config /tmp/demo-mcp.json server list
+mcpx -c ~/demo-mcp.json --pretty server list
 mcpx --pretty list-tools -s db
 ```
 
@@ -110,13 +112,15 @@ Active Config is whichever file wins, in this order (replace, never merge maps):
 
 | Priority | Source | Path |
 | :--- | :--- | :--- |
-| 1 | Override | `MCPX_CONFIG` — absolute or relative path to an `mcp.json` file |
-| 2 | Project Config | `./.mcpx/mcp.json` relative to the process cwd, **only if that file exists** (cwd only; no ancestor walk) |
-| 3 | User Config | `~/.mcpx/mcp.json` (`$HOME/.mcpx/mcp.json`) |
+| 1 | Override (flag) | `-c` / `--config <path>` — absolute or cwd-relative file path; leading `~` / `~/…` → home |
+| 2 | Override (env) | `MCPX_CONFIG` — same path rules as `--config` |
+| 3 | Project Config | `./.mcpx/mcp.json` relative to the process cwd, **only if that file exists** (cwd only; no ancestor walk) |
+| 4 | User Config | `~/.mcpx/mcp.json` (`$HOME/.mcpx/mcp.json`) |
 
-When `MCPX_CONFIG` is set, `mcpx` never reads or writes User Config or Project Config. When Project Config exists, it fully replaces User Config for both reads and writes. An Empty Config (`{}` or empty `mcpServers`) yields an empty Server list; a present blank or non-JSON file is invalid Config (error), not a fallthrough to User Config. A lone `.mcpx/` directory without `mcp.json` does not activate Project Config. `server add` does not create Project Config — create the file yourself (or use a later scaffold command).
+When `--config` or `MCPX_CONFIG` is set, `mcpx` never reads or writes User Config or Project Config. `--config` wins if both overrides are set. Override paths must name a **file** (not a directory). When Project Config exists, it fully replaces User Config for both reads and writes. An Empty Config (`{}` or empty `mcpServers`) yields an empty Server list; a present blank or non-JSON file is invalid Config (error), not a fallthrough to User Config. A lone `.mcpx/` directory without `mcp.json` does not activate Project Config. `server add` does not create Project Config — create the file yourself (or use a later scaffold command).
 
 ```bash
+mcpx --config /tmp/demo-mcp.json server list
 MCPX_CONFIG=/tmp/demo-mcp.json mcpx server list
 ```
 
@@ -169,7 +173,7 @@ If `description` is missing or empty:
 
 | Variable | Role |
 | :--- | :--- |
-| `MCPX_CONFIG` | Path to Config file (overrides Project Config and User Config) |
+| `MCPX_CONFIG` | Path to Config file (same rules as `--config`; `--config` wins if both are set) |
 | `MCPX_CLIPBOARD` | Snippet text for `server add --from-clipboard` (skips real clipboard; for tests) |
 | `HOME` | Used to resolve User Config under `~/.mcpx/` |
 
@@ -378,7 +382,7 @@ If the MCP Server (e.g. IntelliJ) listens on **Windows** `127.0.0.1`, a `mcpx` p
 
 - **Server required** — `list-tools` / `call-tool` always require `-s` / `--server`
 - Tools only — no MCP resources or prompts
-- No IDE `mcp.json` edits — only User Config, Project Config, or `MCPX_CONFIG`
+- No IDE `mcp.json` edits — only User Config, Project Config, or `--config` / `MCPX_CONFIG`
 - No one-off `--command` / `--url` on Tool commands
 - stdio + Streamable HTTP only — legacy SSE out of scope
 - No cross-server aggregated / namespaced tool lists

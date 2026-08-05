@@ -1,9 +1,9 @@
 /**
  * Config path resolution.
  *
- * Override: set `MCPX_CONFIG` to an absolute or relative path to the mcp.json
- * file. Tests and disposable environments should use this so the real
- * User / Project Config files are never touched.
+ * Explicit override (highest first): `--config` / `-c`, then `MCPX_CONFIG`.
+ * Both accept a file path (absolute or cwd-relative); leading `~` / `~/…`
+ * expands to home. An existing directory path is an error.
  *
  * Default: Project Config at `cwd/.mcpx/mcp.json` when that file exists;
  * otherwise User Config at `~/.mcpx/mcp.json` (or `$HOME/.mcpx/mcp.json`).
@@ -20,12 +20,52 @@ function isFile(p: string): boolean {
   }
 }
 
-export function resolveConfigPath(
+function expandLeadingTilde(raw: string, home: string): string {
+  if (raw === "~") {
+    return home;
+  }
+  if (raw.startsWith("~/") || raw.startsWith("~\\")) {
+    return path.join(home, raw.slice(2));
+  }
+  return raw;
+}
+
+/** Normalize an explicit override path; reject when it names an existing directory. */
+function normalizeOverridePath(
+  raw: string,
   env: NodeJS.ProcessEnv = process.env,
   cwd: string = process.cwd(),
 ): string {
+  const home = env.HOME ?? os.homedir();
+  const resolved = path.resolve(cwd, expandLeadingTilde(raw, home));
+  let st: fs.Stats;
+  try {
+    st = fs.statSync(resolved);
+  } catch {
+    // Missing path is fine (Empty Config on read / create on write).
+    return resolved;
+  }
+  if (st.isDirectory()) {
+    throw new Error(
+      `Config path is a directory, expected a file: ${resolved}`,
+    );
+  }
+  return resolved;
+}
+
+export function resolveConfigPath(
+  env: NodeJS.ProcessEnv = process.env,
+  cwd: string = process.cwd(),
+  configFlag?: string,
+): string {
+  if (configFlag !== undefined) {
+    if (configFlag.length === 0) {
+      throw new Error("Config path must not be empty");
+    }
+    return normalizeOverridePath(configFlag, env, cwd);
+  }
   if (env.MCPX_CONFIG && env.MCPX_CONFIG.length > 0) {
-    return path.resolve(env.MCPX_CONFIG);
+    return normalizeOverridePath(env.MCPX_CONFIG, env, cwd);
   }
   const projectPath = path.join(cwd, ".mcpx", "mcp.json");
   if (isFile(projectPath)) {
