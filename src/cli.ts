@@ -8,7 +8,8 @@ import {
   saveServers,
   type ServerConfig,
 } from "./config.js";
-import { callToolOnServer, listToolsOnServer } from "./mcp-client.js";
+import { runDoctor } from "./doctor.js";
+import { callToolOnServer, listToolsOnServer, probeServer } from "./mcp-client.js";
 import { writeError, writeJson } from "./output.js";
 import {
   mergeServers,
@@ -16,6 +17,7 @@ import {
   readClipboard,
   readSnippetFile,
 } from "./snippet.js";
+import { parseTimeout } from "./timeout.js";
 
 const program = new Command();
 
@@ -235,6 +237,40 @@ program
       const entry = resolveServer(opts.server);
       const tools = await listToolsOnServer(entry);
       writeJson(tools, { pretty });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      writeError(message);
+    }
+  });
+
+program
+  .command("doctor")
+  .description(
+    "Validate Config shape and Probe each Server (MCP initialize)",
+  )
+  .option("-s, --server <name>", "Check only this Server")
+  .option(
+    "--timeout <duration>",
+    "Per-Server Probe timeout (Ns or Nms, default 10s)",
+    "10s",
+  )
+  .action(async (opts: { server?: string; timeout: string }) => {
+    try {
+      const timeoutMs = parseTimeout(opts.timeout);
+      const pretty = program.opts<{ pretty?: boolean }>().pretty === true;
+      const configPath = activeConfigPath();
+      const servers = loadServers(configPath);
+      const report = await runDoctor({
+        configPath,
+        servers,
+        serverFilter: opts.server,
+        timeoutMs,
+        probe: probeServer,
+      });
+      writeJson(report, { pretty });
+      if (!report.ok) {
+        process.exit(1);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       writeError(message);

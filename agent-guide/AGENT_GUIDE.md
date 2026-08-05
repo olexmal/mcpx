@@ -44,13 +44,25 @@ Short form `-s` equals `--server`. Short form `-t` equals `--tool`.
 | exit 0 | Success |
 | exit 1 | Failure (usage, Config, connect, or Tool error) |
 
-Parse stdout JSON on success. On failure, read stderr; do not expect a JSON error body.
+Parse stdout JSON on success. On failure, read stderr; do not expect a JSON error body — **except** `mcpx doctor`, which prints a JSON report on stdout even when exit code is 1 (per-Server shape/Probe failures). For doctor usage/Config/`-s`/`--timeout` errors, stderr + empty stdout still apply.
 
 ### Success shapes (essentials)
 
 - `server list` → `[{ "name", "purpose" }, …]` (empty Config → `[]`)
 - `list-tools` → `[{ "name", "description?", "inputSchema" }, …]`
 - `call-tool` → MCP tool result object (often `{ "content": [ … ] }`)
+- `doctor` → `{ "ok", "configPath", "servers": [{ "name", "status", "error?", "hint?" }] }`
+
+## Optional diagnostic
+
+When Config looks wrong or a Server will not connect, run:
+
+```bash
+mcpx doctor
+mcpx doctor -s <name>
+```
+
+This validates shape and Probes MCP initialize (not `list-tools`). Not required before every Tool call.
 
 ## Config (do not confuse with IDE MCP config)
 

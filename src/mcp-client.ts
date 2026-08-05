@@ -7,6 +7,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
+  assertValidServerEntry,
   hasCommand,
   hasUrl,
   type ServerConfig,
@@ -121,6 +122,10 @@ function createTransport(entry: ServerConfig): Transport {
   });
 }
 
+function formatTimeoutLabel(ms: number): string {
+  return ms % 1000 === 0 ? `${ms / 1000}s` : `${ms}ms`;
+}
+
 /**
  * Run one MCP operation against a Config Server, always disconnecting.
  */
@@ -128,6 +133,7 @@ export async function withServerClient<T>(
   entry: ServerConfig,
   fn: (client: Client) => Promise<T>,
 ): Promise<T> {
+  assertValidServerEntry(entry);
   const transport = createTransport(entry);
   const client = new Client({ name: "mcpx", version: "0.1.0" });
   try {
@@ -138,6 +144,43 @@ export async function withServerClient<T>(
       await client.close();
     } catch {
       // ignore close errors after a failed connect/op
+    }
+  }
+}
+
+/**
+ * Probe: MCP initialize via connect, then disconnect. No listTools.
+ */
+export async function probeServer(
+  entry: ServerConfig,
+  timeoutMs: number,
+): Promise<void> {
+  assertValidServerEntry(entry);
+  const transport = createTransport(entry);
+  const client = new Client({ name: "mcpx", version: "0.1.0" });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const connect = client.connect(transport);
+  // Avoid unhandled rejection if timeout wins the race first.
+  void connect.catch(() => {});
+  try {
+    await Promise.race([
+      connect,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(
+            new Error(`timed out after ${formatTimeoutLabel(timeoutMs)}`),
+          );
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+    try {
+      await client.close();
+    } catch {
+      // ignore close errors after timeout or failed connect
     }
   }
 }

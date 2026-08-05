@@ -39,6 +39,7 @@ mcpx server add [options]
 mcpx server remove <name>
 mcpx list-tools --server <name>
 mcpx call-tool --server <name> --tool <name> [--args <json>]
+mcpx doctor [-s|--server <name>] [--timeout <duration>]
 ```
 
 With no arguments, `mcpx` prints help and exits 0.
@@ -72,7 +73,7 @@ mcpx --pretty list-tools -s db
 | **stdout (TTY)** | Pretty JSON even without `--pretty` when stdout is a terminal |
 | **stderr** | Error message + trailing newline |
 | **exit 0** | Success |
-| **exit 1** | Any failure (usage, Config, connect, tool error) |
+| **exit 1** | Any failure (usage, Config, connect, tool error). **`doctor` exception:** exit 1 still prints the JSON report on stdout when per-Server checks failed; stderr stays empty for those cases. |
 
 Successful mutating commands (`server add`, `server remove`) write nothing on success.
 
@@ -101,6 +102,25 @@ Successful mutating commands (`server add`, `server remove`) write nothing on su
 **`call-tool`**
 
 MCP tool result object (typically `{ "content": [ … ] }`, may include `structuredContent` / `isError`). When the MCP result has `isError: true`, `mcpx` exits 1 and writes `Tool error: …` to stderr with empty stdout.
+
+**`doctor`**
+
+```json
+{
+  "ok": true,
+  "configPath": "/path/to/mcp.json",
+  "servers": [
+    { "name": "idea", "status": "ok" },
+    {
+      "name": "bad",
+      "status": "shape_error",
+      "error": "…"
+    }
+  ]
+}
+```
+
+`status` is `ok` | `shape_error` | `probe_error`. Optional `hint` may appear on `probe_error` (e.g. likely SSE). Top-level `ok` is true iff every row is `ok` (mirrors exit code).
 
 ---
 
@@ -346,6 +366,36 @@ Tool-level MCP errors (`isError: true`) ⇒ `Tool error: …` on stderr, exit 1,
 
 ---
 
+### `mcpx doctor`
+
+Validate Config **shape** for each targeted Server, then **Probe** (MCP initialize + disconnect). Does not call `listTools`.
+
+```bash
+mcpx doctor
+mcpx doctor -s idea
+mcpx doctor --timeout 5s
+mcpx doctor --timeout 500ms
+```
+
+| Option | Required | Description |
+| :--- | :--- | :--- |
+| `-s`, `--server <name>` | no | Check only this Server (default: all in Config) |
+| `--timeout <duration>` | no | Per-Server Probe budget. `Ns` or `Nms` only (default: `10s`) |
+
+**Behavior**
+
+1. Resolve Config. Invalid / unreadable Config ⇒ stderr + exit 1 (no report).
+2. Empty Config with no `-s` ⇒ `{ ok: true, configPath, servers: [] }`, exit 0.
+3. Unknown `-s` ⇒ stderr + exit 1, empty stdout.
+4. For each targeted Server **sequentially**: static shape check, then Probe. Continue after failures.
+5. Exit 0 iff every Server row is `ok`; else exit 1 **with the JSON report still on stdout** (stderr empty for per-Server failures).
+
+Shape rules (shared with `server add` and tool pre-connect): exactly one of `command` / `url`; typed `args` / `env` / `headers`; HTTP URLs must parse as `http:` or `https:`.
+
+On Probe failure, if the error looks like legacy SSE, the row may include a `hint` about Streamable HTTP.
+
+---
+
 ## Transports (v1)
 
 | Transport | Config fields | Typical use |
@@ -375,6 +425,7 @@ If the MCP Server (e.g. IntelliJ) listens on **Windows** `127.0.0.1`, a `mcpx` p
 | Empty snippet | `Server snippet contains no Servers to add` |
 | Clipboard unavailable | `Unable to read clipboard …` |
 | Tool failure | `Tool error: …` |
+| Invalid `--timeout` | `Invalid --timeout …` |
 
 ---
 
@@ -404,4 +455,8 @@ mcpx server remove db
 mcpx list-tools -s idea
 mcpx call-tool -s idea --tool get_all_open_file_paths --args '{}'
 mcpx --pretty call-tool -s db --tool query --args '{"sql":"select 1"}'
+
+# mcpx doctor
+mcpx doctor
+mcpx doctor -s idea --timeout 5s
 ```

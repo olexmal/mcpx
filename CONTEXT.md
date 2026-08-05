@@ -37,12 +37,16 @@ Command results are JSON on stdout by default (agent-first). A human-readable mo
 _Avoid_: Human text as the only format, requiring `--json` for agents
 
 **Commands**:
-Noun-first CLI: `mcpx server list|add|remove`, `mcpx list-tools --server <name>`, `mcpx call-tool --server <name> …`. Agent loop is still list Servers → list Tools on one Server → call Tool.
-_Avoid_: Verb-first `list servers` / `call tool` as the canonical surface
+Noun-first CLI: `mcpx server list|add|remove`, `mcpx list-tools --server <name>`, `mcpx call-tool --server <name> …`, plus top-level `mcpx doctor` (Config shape + Probe diagnostic). Agent loop is still list Servers → list Tools on one Server → call Tool; doctor is optional when Config or connect looks wrong.
+_Avoid_: Verb-first `list servers` / `call tool` as the canonical surface; Doctor as a domain noun
 
 **Transport**:
 How a Server is reached. v1 supports stdio (`command` / `args` / `env`) and Streamable HTTP (`url`, optional headers). Legacy SSE is out of scope for v1.
 _Avoid_: SSE-only clients as a v1 requirement
+
+**Probe**:
+A short-lived check that a Server’s Config entry can complete an MCP initialize over its Transport, then disconnect. Used by `mcpx doctor` after static shape validation; not Tool discovery or invocation.
+_Avoid_: Health check, ping, connect-only without MCP, list-tools-as-check, Doctor-as-domain-noun
 
 **Agent Guide**:
 Portable instructions that teach a shell-capable agent how to use `mcpx`: the three-step loop (list Servers → list Tools on one Server → call Tool), Output conventions, and Config boundaries. Canonical form is agent-agnostic Markdown. Distinct from the full human CLI reference and from Config itself.

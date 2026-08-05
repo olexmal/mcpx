@@ -141,21 +141,83 @@ export function hasUrl(entry: ServerConfig): boolean {
   return typeof entry.url === "string" && entry.url.length > 0;
 }
 
+function assertStringMap(
+  label: string,
+  value: unknown,
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`Server config ${label} must be an object of string values`);
+  }
+  for (const v of Object.values(value as Record<string, unknown>)) {
+    if (typeof v !== "string") {
+      throw new Error(`Server config ${label} must be an object of string values`);
+    }
+  }
+}
+
 /**
- * Transport rule: exactly one of stdio (`command`) or HTTP (`url`).
- * Rejects neither and rejects both.
+ * Full static Server entry shape: transport exclusivity, field types, and
+ * http(s) URL parse. Shared by doctor, server add, and tool pre-connect.
  */
-export function assertValidTransport(entry: ServerConfig): void {
+export function assertValidServerEntry(entry: ServerConfig): void {
+  if (entry.command !== undefined) {
+    if (typeof entry.command !== "string" || entry.command.length === 0) {
+      throw new Error("Server config command must be a non-empty string");
+    }
+  }
+  if (entry.url !== undefined) {
+    if (typeof entry.url !== "string" || entry.url.length === 0) {
+      throw new Error("Server config url must be a non-empty string");
+    }
+  }
+
+  if (entry.args !== undefined) {
+    if (
+      !Array.isArray(entry.args) ||
+      !entry.args.every((a) => typeof a === "string")
+    ) {
+      throw new Error("Server config args must be an array of strings");
+    }
+  }
+
+  assertStringMap("env", entry.env);
+  assertStringMap("headers", entry.headers);
+
   const stdio = hasCommand(entry);
   const http = hasUrl(entry);
   if (!stdio && !http) {
     throw new Error(
-      "Server must have either --command (stdio) or --url (HTTP), not neither",
+      "Server must have either command (stdio) or url (HTTP), not neither",
     );
   }
   if (stdio && http) {
     throw new Error(
-      "Server must not have both --command and --url; choose one transport",
+      "Server must not have both command and url; choose one transport",
     );
   }
+
+  if (http) {
+    let parsed: URL;
+    try {
+      parsed = new URL(entry.url as string);
+    } catch {
+      throw new Error(`Server config url is not a valid URL: ${entry.url}`);
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error(
+        `Server config url must use http or https, got ${parsed.protocol}`,
+      );
+    }
+  }
+}
+
+/**
+ * Transport rule: exactly one of stdio (`command`) or HTTP (`url`).
+ * Prefer {@link assertValidServerEntry} for full static checks.
+ */
+export function assertValidTransport(entry: ServerConfig): void {
+  assertValidServerEntry(entry);
 }

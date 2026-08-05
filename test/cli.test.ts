@@ -18,6 +18,7 @@ describe("mcpx CLI harness", () => {
     expect(result.stdout).toMatch(/list \| add \| remove/);
     expect(result.stdout).toMatch(/list-tools/);
     expect(result.stdout).toMatch(/call-tool/);
+    expect(result.stdout).toMatch(/doctor/);
     expect(result.stdout).toMatch(/--config/);
   });
 
@@ -1607,5 +1608,138 @@ describe("--config / -c flag", () => {
     expect(result.stderr).toMatch(/directory/i);
     expect(result.stderr).toMatch(/expected a file/i);
     expect(result.stdout).toBe("");
+  });
+});
+
+describe("mcpx doctor (CLI wiring)", () => {
+  let stub: StubHttpMcpHandle | undefined;
+
+  afterEach(async () => {
+    if (stub !== undefined) {
+      await stub.close();
+      stub = undefined;
+    }
+  });
+
+  it("empty Config prints ok report and exits 0", async () => {
+    const result = await runMcpx(["doctor"], {
+      mcpConfig: "/tmp/mcpx-doctor-missing/mcp.json",
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    const report = JSON.parse(result.stdout) as {
+      ok: boolean;
+      configPath: string;
+      servers: unknown[];
+    };
+    expect(report.ok).toBe(true);
+    expect(report.servers).toEqual([]);
+    expect(report.configPath).toContain("mcp.json");
+  });
+
+  it("unknown -s exits 1 with stderr and no report body", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(configPath, JSON.stringify({ mcpServers: {} }));
+    const result = await runMcpx(["doctor", "-s", "missing"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toMatch(/unknown name/i);
+    expect(result.stdout).toBe("");
+  });
+
+  it("invalid --timeout exits 1", async () => {
+    const result = await runMcpx(["doctor", "--timeout", "10"], {
+      mcpConfig: "/tmp/mcpx-doctor-to/mcp.json",
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toMatch(/timeout/i);
+    expect(result.stdout).toBe("");
+  });
+
+  it("shape_error yields ok false, exit 1, empty stderr", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: { bad: { description: "no transport" } },
+      }),
+    );
+    const result = await runMcpx(["doctor"], { mcpConfig: configPath });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe("");
+    const report = JSON.parse(result.stdout) as {
+      ok: boolean;
+      servers: Array<{ name: string; status: string }>;
+    };
+    expect(report.ok).toBe(false);
+    expect(report.servers).toEqual([
+      expect.objectContaining({ name: "bad", status: "shape_error" }),
+    ]);
+  });
+
+  it("Probe success against stub HTTP exits 0", async () => {
+    stub = await startStubHttpMcp();
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: { httpstub: { url: stub.url } },
+      }),
+    );
+    const result = await runMcpx(["doctor", "-s", "httpstub"], {
+      mcpConfig: configPath,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    const report = JSON.parse(result.stdout) as {
+      ok: boolean;
+      servers: Array<{ status: string }>;
+    };
+    expect(report.ok).toBe(true);
+    expect(report.servers).toEqual([{ name: "httpstub", status: "ok" }]);
+  });
+
+  it("mixed shape ok and Probe ok yields ok false, empty stderr", async () => {
+    stub = await startStubHttpMcp();
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          httpstub: { url: stub.url },
+          bad: { description: "no transport" },
+        },
+      }),
+    );
+    const result = await runMcpx(["doctor"], { mcpConfig: configPath });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe("");
+    const report = JSON.parse(result.stdout) as {
+      ok: boolean;
+      servers: Array<{ name: string; status: string }>;
+    };
+    expect(report.ok).toBe(false);
+    const byName = Object.fromEntries(
+      report.servers.map((s) => [s.name, s.status]),
+    );
+    expect(byName.httpstub).toBe("ok");
+    expect(byName.bad).toBe("shape_error");
+  });
+
+  it("server add rejects non-http URL (shared shape)", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    const add = await runMcpx(
+      ["server", "add", "--name", "ftp", "--url", "ftp://example.com/x"],
+      { mcpConfig: configPath },
+    );
+    expect(add.exitCode).not.toBe(0);
+    expect(add.stderr).toMatch(/http/i);
+    expect(add.stdout).toBe("");
   });
 });
