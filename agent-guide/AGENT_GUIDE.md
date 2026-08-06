@@ -25,6 +25,8 @@ Every Tool operation requires `-s` / `--server <name>`.
 3. **Call a Tool** — pass a JSON **object** as `--args`  
    `mcpx call-tool -s <name> --tool <tool> --args '<json>'`
 
+`call-tool` re-lists Tools on the Server and validates `--args` against the Tool’s live `inputSchema` before invoking (fail-fast: `Unknown tool` / `Invalid --args`). That internal list is **not** a substitute for step 2 — still list Tools first to discover names and schemas.
+
 Example:
 
 ```bash

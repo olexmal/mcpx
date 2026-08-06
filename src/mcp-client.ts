@@ -12,6 +12,7 @@ import {
   hasUrl,
   type ServerConfig,
 } from "./config.js";
+import { assertArgsMatchInputSchema } from "./validate-tool-args.js";
 
 export type ListedTool = {
   name: string;
@@ -189,17 +190,26 @@ export async function listToolsOnServer(
   entry: ServerConfig,
 ): Promise<ListedTool[]> {
   return withServerClient(entry, async (client) => {
-    const result = await client.listTools();
-    return result.tools.map((tool) => {
-      const listed: ListedTool = {
-        name: tool.name,
-        inputSchema: tool.inputSchema as ListedTool["inputSchema"],
-      };
-      if (tool.description !== undefined) {
-        listed.description = tool.description;
-      }
-      return listed;
-    });
+    return mapListedTools((await client.listTools()).tools);
+  });
+}
+
+function mapListedTools(
+  tools: Array<{
+    name: string;
+    description?: string;
+    inputSchema: ListedTool["inputSchema"];
+  }>,
+): ListedTool[] {
+  return tools.map((tool) => {
+    const listed: ListedTool = {
+      name: tool.name,
+      inputSchema: tool.inputSchema as ListedTool["inputSchema"],
+    };
+    if (tool.description !== undefined) {
+      listed.description = tool.description;
+    }
+    return listed;
   });
 }
 
@@ -209,6 +219,13 @@ export async function callToolOnServer(
   args: Record<string, unknown>,
 ): Promise<unknown> {
   return withServerClient(entry, async (client) => {
+    const listed = mapListedTools((await client.listTools()).tools);
+    const match = listed.find((t) => t.name === tool);
+    if (match === undefined) {
+      throw new Error(`Unknown tool: ${tool}`);
+    }
+    assertArgsMatchInputSchema(args, match.inputSchema);
+
     const result = await client.callTool({ name: tool, arguments: args });
     if (
       result !== null &&

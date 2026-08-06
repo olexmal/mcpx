@@ -11,6 +11,7 @@ Shipped behavior detail: [`INCEPTION.md`](./INCEPTION.md), [`docs/cli.md`](./doc
 - **Named Servers in Config** — `mcpServers` map with optional Purpose (`description`).
 - **Server management** — `server list` / `add` (flags, `--from-file`, `--from-clipboard`) / `remove`.
 - **Tool loop** — `list-tools` and `call-tool` with required `-s` / `--server`.
+- **`call-tool` arg validation** — After connect, list Tools, reject unknown Tool, validate `--args` against live `inputSchema` (full JSON Schema + formats; no remote `$ref` fetch) before calling. See [#16](https://github.com/olexmal/mcpx/issues/16).
 - **Transports** — stdio (`command` / `args` / `env`) and Streamable HTTP (`url` / `headers`).
 - **Agent-first Output** — compact JSON on stdout; `--pretty` / TTY; errors on stderr with exit 1.
 - **`mcpx doctor`** — Config shape validation + Probe (MCP initialize) per Server; optional `-s` / `--timeout`; JSON report on stdout even when exit 1 for per-Server failures. See [#14](https://github.com/olexmal/mcpx/issues/14).

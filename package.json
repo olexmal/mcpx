@@ -27,6 +27,8 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "commander": "^13.1.0"
   },
   "devDependencies": {

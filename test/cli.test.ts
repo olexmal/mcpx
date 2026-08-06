@@ -743,6 +743,204 @@ describe("mcpx list-tools / call-tool (stdio)", () => {
     expect(payload.content).toEqual([{ type: "text", text: "hello" }]);
   });
 
+  it("call-tool rejects unknown Tool before calling", async () => {
+    const configPath = await configWithStub();
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "stub",
+        "--tool",
+        "no_such_tool",
+        "--args",
+        "{}",
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/Unknown tool:\s*no_such_tool/);
+  });
+
+  it("call-tool rejects --args that fail the Tool inputSchema", async () => {
+    const configPath = await configWithStub();
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "stub",
+        "--tool",
+        "echo",
+        "--args",
+        "{}",
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/Invalid --args/);
+    expect(result.stderr).toMatch(/message/i);
+  });
+
+  it("call-tool rejects --args with wrong JSON Schema type", async () => {
+    const configPath = await configWithStub();
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "stub",
+        "--tool",
+        "echo",
+        "--args",
+        '{"message":1}',
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/Invalid --args/);
+    expect(result.stderr).toMatch(/message/i);
+  });
+
+  it("call-tool allows any object --args when Tool has no input constraints", async () => {
+    const configPath = await configWithStub();
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "stub",
+        "--tool",
+        "fail",
+        "--args",
+        "{}",
+      ],
+      { mcpConfig: configPath },
+    );
+    // fail Tool returns isError — validation must have allowed the call through
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/Tool error:/);
+    expect(result.stderr).not.toMatch(/Invalid --args|Unusable inputSchema/);
+  });
+
+  it("call-tool rejects unusable inputSchema with remote $ref", async () => {
+    const badSchemaPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "fixtures/stub-mcp-bad-schema.mjs",
+    );
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          bad: {
+            command: process.execPath,
+            args: [badSchemaPath],
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "bad",
+        "--tool",
+        "remote_ref",
+        "--args",
+        "{}",
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/Unusable inputSchema/);
+    expect(result.stderr).not.toMatch(/should not be called/);
+  });
+
+  it("call-tool rejects --args with invalid format before calling", async () => {
+    const formatPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "fixtures/stub-mcp-format.mjs",
+    );
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          fmt: {
+            command: process.execPath,
+            args: [formatPath],
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "fmt",
+        "--tool",
+        "email_check",
+        "--args",
+        '{"email":"not-an-email"}',
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(/Invalid --args/);
+    expect(result.stderr).toMatch(/format|email/i);
+    expect(result.stderr).not.toMatch(/unknown format/i);
+  });
+
+  it("call-tool accepts --args with valid format", async () => {
+    const formatPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "fixtures/stub-mcp-format.mjs",
+    );
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
+    const configPath = path.join(dir, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          fmt: {
+            command: process.execPath,
+            args: [formatPath],
+          },
+        },
+      }),
+    );
+
+    const result = await runMcpx(
+      [
+        "call-tool",
+        "--server",
+        "fmt",
+        "--tool",
+        "email_check",
+        "--args",
+        '{"email":"a@b.co"}',
+      ],
+      { mcpConfig: configPath },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    const payload = JSON.parse(result.stdout) as {
+      content: Array<{ type: string; text: string }>;
+    };
+    expect(payload.content).toEqual([{ type: "text", text: "a@b.co" }]);
+  });
+
   it("call-tool rejects invalid --args JSON before connecting", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "mcpx-"));
     const configPath = path.join(dir, "mcp.json");

@@ -360,7 +360,16 @@ mcpx call-tool -s <name> -t <tool> --args '{}'
 | `-t`, `--tool <name>` | yes | Tool name |
 | `--args <json>` | no | Tool arguments as a JSON **object** (default: `{}`) |
 
-`--args` is validated before connect. Must be a JSON object (not an array or primitive). Invalid JSON or non-object ⇒ stderr + exit 1.
+`--args` must be a JSON **object** (not an array or primitive). That check runs **before connect**. Invalid JSON or non-object ⇒ stderr + exit 1.
+
+After connect, in the same session, mcpx lists Tools (same as `list-tools`, no pagination walk), then:
+
+1. Exact Tool name match — unknown ⇒ `Unknown tool: <name>` on stderr, exit 1, **no call**
+2. Full JSON Schema validation of `--args` against that Tool’s live `inputSchema` (including common `format` keywords). Failures ⇒ `Invalid --args: …` on stderr, exit 1, **no call**
+3. Missing/empty `inputSchema` ⇒ any JSON object is accepted
+4. Present but unusable schema (e.g. unresolvable / remote `$ref`; mcpx does not fetch remote refs) ⇒ clear unusable-schema error on stderr, exit 1, **no call**
+
+There is no `--no-validate` flag. Schema validation is fail-fast **before the Tool call**, not before connect.
 
 Tool-level MCP errors (`isError: true`) ⇒ `Tool error: …` on stderr, exit 1, empty stdout.
 
@@ -420,6 +429,9 @@ If the MCP Server (e.g. IntelliJ) listens on **Windows** `127.0.0.1`, a `mcpx` p
 | Unknown Server | `Server not found (unknown name): …` |
 | Neither / both transports | `Server must have either …` / `must not have both …` |
 | Bad `--args` / `--env` / `--headers` JSON | `Invalid JSON for --…` or type mismatch |
+| `--args` fails Tool `inputSchema` | `Invalid --args: …` |
+| Unknown Tool on `call-tool` | `Unknown tool: …` |
+| Unusable Tool `inputSchema` | `Unusable inputSchema: …` |
 | Merge + flag mix | `Cannot combine --from-file/--from-clipboard with …` |
 | Both merge sources | `Use only one of --from-file or --from-clipboard` |
 | Empty snippet | `Server snippet contains no Servers to add` |
